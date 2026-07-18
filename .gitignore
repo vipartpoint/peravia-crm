@@ -1,0 +1,25 @@
+
+# Secrets
+.secrets/*
+
+# Backups & Logs
+backups/
+logs/
+*.sql.gz
+*.tar.gz
+.env
+.env.*
+node_modules/
+.next/
+.DS_Store
+
+*.txt
+
+*.pdf
+*.jpeg
+*.jpg
+*.png
+*.docx
+dist/
+*.bak
+*.log

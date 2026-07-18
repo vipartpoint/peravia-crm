@@ -1,0 +1,108 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Lint
+        working-directory: ./backend
+        run: npm run lint --if-present
+
+      - name: TypeScript Build
+        working-directory: ./backend
+        run: npm run build
+
+  test-backend:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Unit Tests
+        working-directory: ./backend
+        run: npm run test --if-present
+
+      - name: Security Scan (Dependencies)
+        working-directory: ./backend
+        run: npm audit --audit-level=high
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: ./frontend
+        run: npm run lint --if-present
+
+      - name: TypeScript Build
+        working-directory: ./frontend
+        run: npm run build
+
+  test-frontend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Unit Tests
+        working-directory: ./frontend
+        run: npm run test --if-present
+
+      - name: Security Scan (Dependencies)
+        working-directory: ./frontend
+        run: npm audit --audit-level=high

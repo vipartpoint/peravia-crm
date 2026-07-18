@@ -1,0 +1,50 @@
+[
+  {
+    "opportunityId": "c6778e8a-ec27-4ea6-91c2-66a080b07e09",
+    "originalStage": "Won",
+    "originalStatus": "Won",
+    "newSalesStage": "Payment",
+    "newStatus": "Won",
+    "note": "Legacy demo record migrated from historical Won without verifiable payment evidence."
+  },
+  {
+    "opportunityId": "da77aa14-dcff-42d0-9dee-eb18668c41a8",
+    "originalStage": "Won",
+    "originalStatus": "Won",
+    "newSalesStage": "Payment",
+    "newStatus": "Won",
+    "note": "Legacy demo record migrated from historical Won without verifiable payment evidence."
+  },
+  {
+    "opportunityId": "1b7652b6-f680-4032-b6d5-357c13e4ebe2",
+    "originalStage": "Won",
+    "originalStatus": "Won",
+    "newSalesStage": "Payment",
+    "newStatus": "Won",
+    "note": "Legacy demo record migrated from historical Won without verifiable payment evidence."
+  },
+  {
+    "opportunityId": "6b4f250e-04c0-4a70-adf4-9f4c5ca3cf4b",
+    "originalStage": "Won",
+    "originalStatus": "Won",
+    "newSalesStage": "Payment",
+    "newStatus": "Won",
+    "note": "Legacy demo record migrated from historical Won without verifiable payment evidence."
+  },
+  {
+    "opportunityId": "e9f5394f-c492-429f-bb43-6dbe7c2eded4",
+    "originalStage": "Lost",
+    "originalStatus": "Lost",
+    "newSalesStage": "Suspect",
+    "newStatus": "Lost",
+    "note": "Legacy demo record migrated from historical Lost without verifiable stage history."
+  },
+  {
+    "opportunityId": "d47bb984-44f5-4daf-bd7f-354ba99d4368",
+    "originalStage": "Lost",
+    "originalStatus": "Lost",
+    "newSalesStage": "Suspect",
+    "newStatus": "Lost",
+    "note": "Legacy demo record migrated from historical Lost without verifiable stage history."
+  }
+]

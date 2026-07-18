@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@custom-variant dark (.dark &);
+:root {
+  --background: #F8FAFC;
+  --foreground: #0f172a;
+  
+  --primary: #0FA9B0;
+  --primary-hover: #0C98A0;
+  --card: #FFFFFF;
+  --border: #E5E7EB;
+  
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+
+  --sidebar-bg: #FFFFFF;
+  --sidebar-hover: #F1F5F9;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #F8FAFC;
+  
+  --primary: #0FA9B0;
+  --primary-hover: #0C98A0;
+  --card: #111827;
+  --border: #1e293b;
+  
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+
+  --sidebar-bg: #111827;
+  --sidebar-hover: #1e293b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-hover: var(--sidebar-hover);
+
+  --font-sans: var(--font-kalameh), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    direction: rtl;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

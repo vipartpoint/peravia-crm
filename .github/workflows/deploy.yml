@@ -1,0 +1,48 @@
+name: Production Deployment
+
+on:
+  workflow_run:
+    workflows: ["Backend CI Pipeline", "Frontend CI Pipeline"]
+    branches: [main]
+    types: 
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Execute Deployment over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            
+            echo "1. Pulling latest code..."
+            cd /opt/crm
+            git checkout main
+            git pull origin main
+
+            echo "2. Logging into GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            echo "3. Pulling latest images..."
+            docker compose -f docker-compose.production.yml pull
+
+            echo "4. Database Backup (Safety First)..."
+            /opt/crm/backend/scripts/backup-postgres.sh
+
+            echo "5. Database Migration..."
+            docker compose -f docker-compose.production.yml run --rm db_migrator npx prisma migrate deploy
+
+            echo "6. Restarting Application (Rolling Update)..."
+            docker compose -f docker-compose.production.yml up -d --no-deps backend frontend
+
+            echo "7. Verification Check..."
+            chmod +x /opt/crm/backend/scripts/verify-deployment.sh
+            /opt/crm/backend/scripts/verify-deployment.sh
+            
+            echo "Deployment Pipeline Complete!"
