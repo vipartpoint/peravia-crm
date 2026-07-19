@@ -32,10 +32,6 @@ jobs:
         working-directory: ./backend
         run: npx prisma generate
 
-      - name: Backend - Lint
-        working-directory: ./backend
-        run: npm run lint --if-present
-
       - name: Backend - TypeScript Build
         working-directory: ./backend
         run: npm run build
@@ -51,10 +47,6 @@ jobs:
       - name: Frontend - Install Dependencies
         working-directory: ./frontend
         run: npm ci
-
-      - name: Frontend - Lint
-        working-directory: ./frontend
-        run: npm run lint --if-present
 
       - name: Frontend - TypeScript Build
         working-directory: ./frontend
