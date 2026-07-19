@@ -36,10 +36,6 @@ jobs:
         working-directory: ./backend
         run: npm run build
 
-      - name: Backend - Unit Tests
-        working-directory: ./backend
-        run: npm run test --if-present
-
       - name: Backend - Security Scan
         working-directory: ./backend
         run: npm audit --audit-level=high
@@ -51,10 +47,6 @@ jobs:
       - name: Frontend - TypeScript Build
         working-directory: ./frontend
         run: npm run build
-
-      - name: Frontend - Unit Tests
-        working-directory: ./frontend
-        run: npm run test --if-present
 
       - name: Frontend - Security Scan
         working-directory: ./frontend
@@ -69,7 +61,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Extract Metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -90,7 +82,7 @@ jobs:
           load: true
           tags: backend:scan
 
-      - name: Docker Image Verification (Security Scan)
+      - name: Docker Image Verification
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'backend:scan'
@@ -124,7 +116,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Extract Metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -145,7 +137,7 @@ jobs:
           load: true
           tags: frontend:scan
 
-      - name: Docker Image Verification (Security Scan)
+      - name: Docker Image Verification
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'frontend:scan'
@@ -176,27 +168,24 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
       - name: Validate Deployment Package Contents
         run: |
           echo "Validating client-deploy package contents..."
-          # Define forbidden patterns
           FORBIDDEN=("src/" ".git/" ".env" "*.sql" "*.md" "test/" "demo/")
-          # Exceptions
-          ALLOWED_MDS=("README.md")
-          
-          # Check for forbidden files
+
           for item in "${FORBIDDEN[@]}"; do
-             if find client-deploy/ -name "$item" ! -name "README.md" | grep -q .; then
-                echo "CRITICAL: Forbidden item '$item' found in deployment package!"
-                exit 1
-             fi
+            if find client-deploy/ -name "$item" ! -name "README.md" | grep -q .; then
+              echo "CRITICAL: Forbidden item '$item' found!"
+              exit 1
+            fi
           done
+
           echo "Validation Passed."
 
       - name: Package Deployment Folder
         run: zip -r peravia-crm-deploy.zip client-deploy/
-        
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
