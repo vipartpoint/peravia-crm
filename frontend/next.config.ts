@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/v1/:path*',
-        destination: `${process.env.BACKEND_URL || (() => { throw new Error('BACKEND_URL environment variable is missing'); })()}/api/v1/:path*`
+        destination: `${process.env.BACKEND_URL || 'http://backend:3000'}/api/v1/:path*`
       }
     ];
   }
