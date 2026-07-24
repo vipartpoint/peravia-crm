@@ -7,12 +7,17 @@ export class MinioService implements OnModuleInit {
   private readonly bucketName = 'cheques';
 
   constructor() {
+    if (!process.env.MINIO_ENDPOINT) throw new Error('MINIO_ENDPOINT environment variable is missing');
+    if (!process.env.MINIO_PORT) throw new Error('MINIO_PORT environment variable is missing');
+    if (!process.env.MINIO_ACCESS_KEY) throw new Error('MINIO_ACCESS_KEY environment variable is missing');
+    if (!process.env.MINIO_SECRET_KEY) throw new Error('MINIO_SECRET_KEY environment variable is missing');
+
     this.minioClient = new Minio.Client({
-      endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-      port: parseInt(process.env.MINIO_PORT || '9000'),
+      endPoint: process.env.MINIO_ENDPOINT,
+      port: parseInt(process.env.MINIO_PORT),
       useSSL: process.env.MINIO_USE_SSL === 'true',
-      accessKey: process.env.MINIO_ACCESS_KEY || 'admin',
-      secretKey: process.env.MINIO_SECRET_KEY || 'admin123',
+      accessKey: process.env.MINIO_ACCESS_KEY,
+      secretKey: process.env.MINIO_SECRET_KEY,
     });
   }
 

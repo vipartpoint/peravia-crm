@@ -6,7 +6,8 @@ export class LocalLLMProvider implements LLMProvider {
   name = 'LocalLLM';
 
   async generateResponse(messages: { role: string; content: string }[]): Promise<string> {
-    const baseUrl = process.env.LLM_BASE_URL || 'http://localhost:11434/api/chat';
+    if (!process.env.LLM_BASE_URL) throw new Error('LLM_BASE_URL environment variable is missing');
+    const baseUrl = process.env.LLM_BASE_URL;
     const model = process.env.LLM_MODEL || 'llama3';
 
     try {

@@ -79,7 +79,7 @@ RUN echo "{\"version\":\"$BUILD_VERSION\",\"timestamp\":\"$BUILD_TIMESTAMP\"}" >
 
 # Healthcheck targeting the license
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:3000/api/v1/health || exit 1
+    CMD wget --quiet --tries=1 --spider http://0.0.0.0:3000/api/v1/health || exit 1
 
 # Runtime Security Settings
 ENV NODE_ENV=production

@@ -15,9 +15,11 @@ export class HealthController {
     private memory: MemoryHealthIndicator,
     private prisma: PrismaService,
   ) {
+    if (!process.env.REDIS_HOST) throw new Error('REDIS_HOST environment variable is missing');
+    if (!process.env.REDIS_PORT) throw new Error('REDIS_PORT environment variable is missing');
     this.redisClient = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT),
       lazyConnect: true,
       maxRetriesPerRequest: 1,
     });
@@ -27,8 +29,10 @@ export class HealthController {
   @HealthCheck()
   async check() {
     const isProd = process.env.NODE_ENV === 'production';
-    const minioEndpoint = process.env.MINIO_ENDPOINT || 'localhost';
-    const minioPort = process.env.MINIO_PORT || '9000';
+    if (!process.env.MINIO_ENDPOINT) throw new Error('MINIO_ENDPOINT environment variable is missing');
+    if (!process.env.MINIO_PORT) throw new Error('MINIO_PORT environment variable is missing');
+    const minioEndpoint = process.env.MINIO_ENDPOINT;
+    const minioPort = process.env.MINIO_PORT;
     const minioUrl = `http://${minioEndpoint}:${minioPort}/minio/health/live`;
 
     const result = await this.health.check([

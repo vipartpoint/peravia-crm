@@ -112,7 +112,7 @@ export class AuthService {
     // }
 
     // Check trusted device first if MFA is enabled
-    let bypassMfa = true; // TODO: Revert this temporary MFA bypass before deploying to server!
+    let bypassMfa = false;
     if (user.mfaEnabled && req && req.cookies['trusted_device_token']) {
       const deviceToken = req.cookies['trusted_device_token'];
       const deviceTokenHash = require('crypto').createHash('sha256').update(deviceToken).digest('hex');

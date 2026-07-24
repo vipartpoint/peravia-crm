@@ -36,7 +36,9 @@ export default function ReportsPage() {
   const handleExport = async (format: 'excel' | 'csv') => {
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-      const fetchRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1'}/reports/export`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!baseUrl) throw new Error('NEXT_PUBLIC_API_URL environment variable is missing');
+      const fetchRes = await fetch(`${baseUrl}/reports/export`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

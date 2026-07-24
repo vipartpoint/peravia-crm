@@ -100,8 +100,8 @@ import { CatalogsModule } from './catalogs/catalogs.module';
     }]),
     BullModule.forRoot({
       connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
+        host: process.env.REDIS_HOST || (() => { throw new Error('REDIS_HOST environment variable is missing'); })(),
+        port: parseInt(process.env.REDIS_PORT || (() => { throw new Error('REDIS_PORT environment variable is missing'); })()),
       },
     }),
     PrismaModule, AuthModule, UsersModule, CustomersModule,
