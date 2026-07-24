@@ -102,6 +102,7 @@ import { CatalogsModule } from './catalogs/catalogs.module';
       connection: {
         host: process.env.REDIS_HOST || (() => { throw new Error('REDIS_HOST environment variable is missing'); })(),
         port: parseInt(process.env.REDIS_PORT || (() => { throw new Error('REDIS_PORT environment variable is missing'); })()),
+        password: process.env.REDIS_PASSWORD,
       },
     }),
     PrismaModule, AuthModule, UsersModule, CustomersModule,
