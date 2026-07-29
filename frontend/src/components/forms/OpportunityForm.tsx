@@ -93,7 +93,7 @@ export function OpportunityForm({ initialData, onSuccess, onCancel }: Opportunit
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = {
+      const payload: any = {
         ...formData,
         probability: Number(formData.probability),
         items: formData.items.map((i: any) => ({
@@ -103,6 +103,15 @@ export function OpportunityForm({ initialData, onSuccess, onCancel }: Opportunit
           potentialVolume: Number(i.potentialVolume)
         }))
       };
+
+      if (!payload.leadId) delete payload.leadId;
+      if (!payload.territoryId) delete payload.territoryId;
+      if (!payload.ownerId) delete payload.ownerId;
+      if (!payload.expectedCloseDate) delete payload.expectedCloseDate;
+      if (!payload.notes) delete payload.notes;
+      if (!payload.competitorName) delete payload.competitorName;
+      if (!payload.nextAction) delete payload.nextAction;
+      if (!payload.followUpDate) delete payload.followUpDate;
 
       if (initialData?.id) {
         await api.patch(`/opportunities/${initialData.id}`, payload);

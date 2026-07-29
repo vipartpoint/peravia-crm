@@ -54,10 +54,16 @@ export function LeadForm({ initialData, onSuccess, onCancel }: LeadFormProps) {
     e.preventDefault();
     setLoading(true);
     try {
+      const payload: any = { ...formData };
+      if (!payload.territoryId) delete payload.territoryId;
+      if (!payload.assignedTo) delete payload.assignedTo;
+      if (!payload.currentStageId) delete payload.currentStageId;
+      if (!payload.nextFollowUpAt) delete payload.nextFollowUpAt;
+
       if (initialData?.id) {
-        await api.patch(`/leads/${initialData.id}`, formData);
+        await api.patch(`/leads/${initialData.id}`, payload);
       } else {
-        await api.post('/leads', formData);
+        await api.post('/leads', payload);
       }
       if (onSuccess) onSuccess();
     } catch (err: any) {

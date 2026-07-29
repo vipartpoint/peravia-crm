@@ -2,14 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/services/api';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area,
-  FunnelChart, Funnel, LabelList
-} from 'recharts';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { Target, TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, AlertTriangle } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { Target, DollarSign, TrendingUp, AlertTriangle, PieChart as PieChartIcon, Activity } from 'lucide-react';
+import { Funnel3D, FunnelLayer } from '@/components/ui/Funnel3D';
 import { CustomSalesReportBuilder } from '@/components/reports/CustomSalesReportBuilder';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { TrendingDown } from 'lucide-react';
 
 const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const FUNNEL_COLORS = ['#94a3b8', '#60a5fa', '#818cf8', '#c084fc', '#fbbf24', '#34d399', '#f87171'];
@@ -60,27 +58,26 @@ export default function OpportunitiesDashboard() {
   }));
 
   const SPANCOP_STAGES = [
-    { id: 'Suspect', label: 'مظنون (Suspect)' },
-    { id: 'Prospect', label: 'محتمل (Prospect)' },
-    { id: 'Analysis', label: 'تحلیل (Analysis)' },
-    { id: 'Negotiate', label: 'مذاکره (Negotiate)' },
-    { id: 'Close', label: 'بستن قرارداد (Close)' },
-    { id: 'Order', label: 'سفارش (Order)' },
-    { id: 'Payment', label: 'پرداخت (Payment)' }
+    { id: 'Suspect', label: 'Suspect' },
+    { id: 'Prospect', label: 'Prospect' },
+    { id: 'Analysis', label: 'Analysis' },
+    { id: 'Negotiate', label: 'Negotiate' },
+    { id: 'Close', label: 'Close' },
+    { id: 'Order', label: 'Order' },
+    { id: 'Payment', label: 'Payment' }
   ];
 
   const topStageCount = data.byStage['Suspect']?.count || 1;
 
-  const funnelData = SPANCOP_STAGES.map(stage => {
+  const funnelData: FunnelLayer[] = SPANCOP_STAGES.map((stage, index) => {
     const count = data.byStage[stage.id]?.count || 0;
     const value = data.byStage[stage.id]?.value || 0;
-    const conversion = topStageCount > 0 ? Math.round((count / topStageCount) * 100) : 0;
     return {
       name: stage.label,
       id: stage.id,
       count,
       value,
-      conversion
+      color: FUNNEL_COLORS[index % FUNNEL_COLORS.length]
     };
   });
 
@@ -99,29 +96,7 @@ export default function OpportunitiesDashboard() {
     ? Math.round((data.winLoss.won / data.winLoss.totalClosed) * 100) 
     : 0;
 
-  const CustomFunnelTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const pData = payload[0].payload;
-      return (
-        <div className="bg-slate-800 p-3 rounded-lg text-white shadow-xl text-sm border border-slate-700 min-w-[200px]" dir="rtl">
-          <p className="font-bold border-b border-slate-600 pb-2 mb-3 text-right">{pData.name}</p>
-          <div className="flex justify-between items-center gap-4 py-1">
-            <span className="text-slate-400 text-xs">تعداد فرصت:</span>
-            <span className="font-bold text-right">{pData.count}</span>
-          </div>
-          <div className="flex justify-between items-center gap-4 py-1">
-            <span className="text-slate-400 text-xs">ارزش کل:</span>
-            <span className="font-bold text-indigo-300 text-right">{(pData.value / 1000000).toLocaleString()} م.ت</span>
-          </div>
-          <div className="flex justify-between items-center gap-4 py-1 border-t border-slate-700 mt-2 pt-2">
-            <span className="text-slate-400 text-xs">نرخ تبدیل (از ورودی):</span>
-            <span className="font-bold text-emerald-400 text-right">{pData.conversion}%</span>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen">
@@ -213,22 +188,8 @@ export default function OpportunitiesDashboard() {
               </button>
             </div>
           </div>
-          <div className="h-[350px] w-full" dir="ltr">
-            <ResponsiveContainer>
-              <FunnelChart>
-                <RechartsTooltip content={<CustomFunnelTooltip />} />
-                <Funnel
-                  dataKey={funnelMetric}
-                  data={funnelData}
-                  isAnimationActive
-                >
-                  <LabelList position="right" fill="#64748b" stroke="none" dataKey="name" fontSize={12} fontWeight="bold" />
-                  {funnelData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
-                  ))}
-                </Funnel>
-              </FunnelChart>
-            </ResponsiveContainer>
+          <div className="h-[350px] w-full mt-2" dir="ltr">
+            <Funnel3D data={funnelData} height={350} width={600} metric={funnelMetric} />
           </div>
         </div>
 

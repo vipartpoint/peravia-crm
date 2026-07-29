@@ -57,13 +57,53 @@ const competitorsConfig: CatalogConfig = {
   ]
 };
 
+const presentationMethodsConfig: CatalogConfig = {
+  type: 'presentation-methods',
+  title: 'روش‌های پرزنت',
+  columns: [
+    { key: 'code', label: 'کد سیستمی' },
+    { key: 'nameFa', label: 'عنوان (فارسی)' },
+    { key: 'nameEn', label: 'عنوان (انگلیسی)' },
+    { key: 'sortOrder', label: 'ترتیب' }
+  ],
+  formFields: [
+    { name: 'code', label: 'کد سیستمی', type: 'text', required: true },
+    { name: 'nameFa', label: 'عنوان (فارسی)', type: 'text', required: true },
+    { name: 'nameEn', label: 'عنوان (انگلیسی)', type: 'text', required: true },
+    { name: 'description', label: 'توضیحات', type: 'textarea' },
+    { name: 'sortOrder', label: 'ترتیب نمایش', type: 'number', required: true },
+    { name: 'isActive', label: 'وضعیت فعال بودن', type: 'boolean' }
+  ]
+};
+
+const customerReactionsConfig: CatalogConfig = {
+  type: 'customer-reactions',
+  title: 'واکنش‌های مشتری',
+  columns: [
+    { key: 'code', label: 'کد سیستمی' },
+    { key: 'nameFa', label: 'عنوان (فارسی)' },
+    { key: 'nameEn', label: 'عنوان (انگلیسی)' },
+    { key: 'sortOrder', label: 'ترتیب' }
+  ],
+  formFields: [
+    { name: 'code', label: 'کد سیستمی', type: 'text', required: true },
+    { name: 'nameFa', label: 'عنوان (فارسی)', type: 'text', required: true },
+    { name: 'nameEn', label: 'عنوان (انگلیسی)', type: 'text', required: true },
+    { name: 'description', label: 'توضیحات', type: 'textarea' },
+    { name: 'sortOrder', label: 'ترتیب نمایش', type: 'number', required: true },
+    { name: 'isActive', label: 'وضعیت فعال بودن', type: 'boolean' }
+  ]
+};
+
 export default function CatalogsManagementPage() {
-  const [activeTab, setActiveTab] = useState<'lost-reasons' | 'reopen-reasons' | 'competitors'>('lost-reasons');
+  const [activeTab, setActiveTab] = useState<'lost-reasons' | 'reopen-reasons' | 'competitors' | 'presentation-methods' | 'customer-reactions'>('lost-reasons');
 
   const configs = {
     'lost-reasons': lostReasonsConfig,
     'reopen-reasons': reopenReasonsConfig,
-    'competitors': competitorsConfig
+    'competitors': competitorsConfig,
+    'presentation-methods': presentationMethodsConfig,
+    'customer-reactions': customerReactionsConfig
   };
 
   return (
@@ -108,6 +148,26 @@ export default function CatalogsManagementPage() {
           }`}
         >
           رقبا
+        </button>
+        <button
+          onClick={() => setActiveTab('presentation-methods')}
+          className={`px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-colors ${
+            activeTab === 'presentation-methods'
+              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          روش‌های پرزنت
+        </button>
+        <button
+          onClick={() => setActiveTab('customer-reactions')}
+          className={`px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-colors ${
+            activeTab === 'customer-reactions'
+              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          واکنش مشتریان
         </button>
       </div>
 

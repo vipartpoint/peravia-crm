@@ -259,13 +259,13 @@ async function main() {
   // 7. Setup Sales Funnel Stages
   console.log('Seeding Sales Funnel Stages...');
   const stages = [
-    { name: 'Lead', order: 1 },
-    { name: 'Initial Contact', order: 2 },
-    { name: 'Need Analysis', order: 3 },
-    { name: 'Presentation', order: 4 },
-    { name: 'Price Negotiation', order: 5 },
-    { name: 'Proforma', order: 6 },
-    { name: 'Won / Order', order: 7 },
+    { name: 'Suspect (S)', order: 1 },
+    { name: 'Prospect (P)', order: 2 },
+    { name: 'Approach (A)', order: 3 },
+    { name: 'Negotiation (N)', order: 4 },
+    { name: 'Close (C)', order: 5 },
+    { name: 'Order (O)', order: 6 },
+    { name: 'Payment (P)', order: 7 },
     { name: 'Lost', order: 8 }
   ];
 
@@ -276,8 +276,8 @@ async function main() {
       create: s
     });
   }
-  const leadStage = await prisma.salesFunnelStage.findUnique({ where: { name: 'Lead' } });
-  const contactStage = await prisma.salesFunnelStage.findUnique({ where: { name: 'Initial Contact' } });
+  const leadStage = await prisma.salesFunnelStage.findUnique({ where: { name: 'Suspect (S)' } });
+  const contactStage = await prisma.salesFunnelStage.findUnique({ where: { name: 'Prospect (P)' } });
 
   // 8. Setup Leads and Presentations
   console.log('Seeding Leads and Presentations...');

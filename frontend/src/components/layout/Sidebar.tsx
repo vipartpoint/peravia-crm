@@ -11,7 +11,7 @@ import {
   BrainCircuit, Presentation, Building, Archive, ArrowLeftRight, 
   ReceiptText, CreditCard, Wallet, Target, Award, Trophy, 
   PieChart, Package, FileCheck2, LockKeyhole, MonitorSmartphone, 
-  ShieldAlert, Settings, LogOut, ChevronLeft, TrendingUp
+  ShieldAlert, Settings, LogOut, ChevronLeft, TrendingUp, Map
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,6 +37,7 @@ const menuGroups = [
       { icon: Users, label: 'مشتریان', href: '/customers' },
       { icon: Presentation, label: 'جلسات ارائه', href: '/presentations' },
       { icon: MapPin, label: 'ویزیت‌ها', href: '/visits' },
+      { icon: Map, label: 'مناطق', href: '/territories' },
       { icon: ReceiptText, label: 'سفارشات', href: '/orders' },
     ]
   },

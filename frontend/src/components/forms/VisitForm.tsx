@@ -57,6 +57,8 @@ export function VisitForm({ initialData, onSuccess, onCancel }: VisitFormProps) 
       const payload: any = { ...formData };
       if (targetType === 'customer') delete payload.leadId;
       if (targetType === 'lead') delete payload.customerId;
+      if (!payload.territoryId) delete payload.territoryId;
+      if (!payload.notes) delete payload.notes;
 
       if (initialData?.id) {
         await api.patch(`/visits/${initialData.id}`, payload);

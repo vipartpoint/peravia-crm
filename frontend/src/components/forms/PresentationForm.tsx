@@ -17,6 +17,9 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
   const [leads, setLeads] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [presentationMethods, setPresentationMethods] = useState<any[]>([]);
+  const [customerReactions, setCustomerReactions] = useState<any[]>([]);
+  const [lostReasons, setLostReasons] = useState<any[]>([]);
 
   const [targetType, setTargetType] = useState(initialData?.leadId || prefillLeadId ? 'lead' : 'customer');
 
@@ -33,7 +36,6 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
   });
 
   const [rejectionReasons, setRejectionReasons] = useState<string[]>(initialData?.rejectionReasons || []);
-  const REASONS = ['Price', 'Competitor', 'Quality', 'DeliveryTime', 'PaymentTerms', 'NoNeed', 'Other'];
 
   useEffect(() => {
     fetchData();
@@ -41,14 +43,20 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
 
   const fetchData = async () => {
     try {
-      const [lData, cData, pData] = await Promise.all([
+      const [lData, cData, pData, pmData, crData, lrData] = await Promise.all([
         api.get('/leads'),
         api.get('/customers'),
-        api.get('/products')
+        api.get('/products'),
+        api.get('/catalogs/presentation-methods?activeOnly=true&pageSize=100'),
+        api.get('/catalogs/customer-reactions?activeOnly=true&pageSize=100'),
+        api.get('/catalogs/lost-reasons?activeOnly=true&pageSize=100')
       ]);
       setLeads(lData);
       setCustomers(cData);
       setProducts(pData.filter((p: any) => p.isActive));
+      setPresentationMethods(pmData.data || []);
+      setCustomerReactions(crData.data || []);
+      setLostReasons(lrData.data || []);
     } catch (e) {
       console.error(e);
     }
@@ -68,6 +76,10 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
       };
       if (targetType === 'lead') delete payload.customerId;
       if (targetType === 'customer') delete payload.leadId;
+      if (!payload.productId) delete payload.productId;
+      if (!payload.competitorName) delete payload.competitorName;
+      if (!payload.notes) delete payload.notes;
+      if (!payload.nextFollowUpAt) delete payload.nextFollowUpAt;
 
       if (initialData?.id) {
         await api.patch(`/presentations/${initialData.id}`, payload);
@@ -135,10 +147,10 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">روش پرزنت</label>
             <select value={formData.presentationType} onChange={e => setFormData({...formData, presentationType: e.target.value})} className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm">
-              <option value="InPerson">حضوری</option>
-              <option value="Phone">تلفنی</option>
-              <option value="Online">آنلاین</option>
-              <option value="SampleSent">ارسال نمونه</option>
+              <option value="">انتخاب کنید...</option>
+              {presentationMethods.map(pm => (
+                <option key={pm.id} value={pm.code}>{pm.nameFa}</option>
+              ))}
             </select>
           </div>
 
@@ -150,9 +162,10 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">واکنش مشتری</label>
             <select value={formData.customerReaction} onChange={e => setFormData({...formData, customerReaction: e.target.value})} className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm">
-              <option value="Positive">مثبت (علاقه‌مند)</option>
-              <option value="Cautious">محتاط (نیاز به پیگیری)</option>
-              <option value="Negative">منفی (عدم تمایل)</option>
+              <option value="">انتخاب کنید...</option>
+              {customerReactions.map(cr => (
+                <option key={cr.id} value={cr.code}>{cr.nameFa}</option>
+              ))}
             </select>
           </div>
 
@@ -160,9 +173,9 @@ export function PresentationForm({ initialData, onSuccess, onCancel, prefillLead
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">دلایل عدم پذیرش (چند انتخابی)</label>
               <div className="flex flex-wrap gap-2">
-                {REASONS.map(r => (
-                  <button key={r} type="button" onClick={() => toggleReason(r)} className={`px-3 py-1.5 rounded-lg text-sm border font-medium ${rejectionReasons.includes(r) ? 'bg-rose-50 border-rose-500 text-rose-700' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800'}`}>
-                    {r}
+                {lostReasons.map(r => (
+                  <button key={r.code} type="button" onClick={() => toggleReason(r.code)} className={`px-3 py-1.5 rounded-lg text-sm border font-medium ${rejectionReasons.includes(r.code) ? 'bg-rose-50 border-rose-500 text-rose-700' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800'}`}>
+                    {r.nameFa}
                   </button>
                 ))}
               </div>

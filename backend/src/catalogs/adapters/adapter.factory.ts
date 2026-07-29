@@ -2,6 +2,8 @@ import { CatalogAdapter } from './catalog-adapter.interface';
 import { LostReasonAdapter } from './lost-reason.adapter';
 import { ReopenReasonAdapter } from './reopen-reason.adapter';
 import { CompetitorAdapter } from './competitor.adapter';
+import { PresentationMethodAdapter } from './presentation-method.adapter';
+import { CustomerReactionAdapter } from './customer-reaction.adapter';
 
 export class AdapterFactory {
   static getAdapter(type: string): CatalogAdapter<any> | null {
@@ -12,6 +14,10 @@ export class AdapterFactory {
         return new ReopenReasonAdapter();
       case 'competitors':
         return new CompetitorAdapter();
+      case 'presentation-methods':
+        return new PresentationMethodAdapter();
+      case 'customer-reactions':
+        return new CustomerReactionAdapter();
       default:
         return null;
     }

@@ -16,6 +16,8 @@ export function OrderForm({ initialData, onSuccess, onCancel }: OrderFormProps) 
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   
   const [formData, setFormData] = useState({
     customerId: initialData?.customerId || '',
@@ -177,9 +179,11 @@ export function OrderForm({ initialData, onSuccess, onCancel }: OrderFormProps) 
               className="w-full py-2 pr-9 pl-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-100"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
             />
             
-            {searchTerm && (
+            {(searchTerm || isSearchFocused) && (
               <div className="absolute top-full right-0 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto">
                 {filteredProducts.slice(0, 10).map(p => (
                   <div key={p.id} onClick={() => { addItem(p); setSearchTerm(''); }} className="p-3 hover:bg-slate-50 dark:bg-slate-800/50 cursor-pointer flex justify-between items-center border-b last:border-b-0">
