@@ -160,7 +160,7 @@ export class AuthService {
     }
 
     const payload = { username: user.username, sub: user.id, role: user.role?.name || user.role, jti };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: (process.env.JWT_EXPIRATION || '15m') as any });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: (process.env.JWT_EXPIRATION || '7d') as any });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     
     await this.logAuthEvent(user.id, 'LOGIN_SUCCESS', req?.ip);
