@@ -256,18 +256,13 @@ export default function DashboardPage() {
 
       <AiAdoptionCoach />
 
-      <Reorder.Group axis="y" values={layout} onReorder={saveLayout} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max">
         {layout.filter(w => w.visible).map(w => (
-          <Reorder.Item key={w.id} value={w} className={`${w.span} cursor-grab active:cursor-grabbing relative group`} style={{ gridColumn: w.span.includes('col-span-full') ? '1 / -1' : 'auto' }}>
+          <div key={w.id} className={`${w.span || 'col-span-1'} relative group`} style={{ gridColumn: w.span?.includes('col-span-full') ? '1 / -1' : 'auto' }}>
             {renderWidget(w.id)}
-            {w.id !== 'greeting' && (
-              <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="p-1 cursor-grab active:cursor-grabbing text-slate-500 dark:text-slate-400 hover:text-primary transition-colors"><GripVertical className="w-3.5 h-3.5" /></div>
-              </div>
-            )}
-          </Reorder.Item>
+          </div>
         ))}
-      </Reorder.Group>
+      </div>
 
       <AnimatePresence>
         {isSettingsOpen && (

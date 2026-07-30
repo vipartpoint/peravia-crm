@@ -1,96 +1,25 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
 
-echo "====================================="
-echo "  Deploying CRM Production Stack     "
-echo "====================================="
+echo "🚀 Starting Deployment to Production Server..."
+echo "================================================="
 
-# 1. Pre-flight checks
-if [ ! -f "backend/.env" ]; then
-    echo "❌ Error: backend/.env is missing. Please create it using production credentials."
-    exit 1
-fi
+echo "📦 1. Syncing Frontend Source Code..."
+rsync -avz --delete --exclude 'node_modules' --exclude '.next' --exclude 'dist' -e "ssh -i ~/.ssh/crm_production_ed25519 -o ServerAliveInterval=60" frontend/src/ roxer@185.190.39.248:"/home/roxer/CRM\ project/frontend/src/"
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" frontend/package*.json roxer@185.190.39.248:"/home/roxer/CRM\ project/frontend/"
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" frontend/next.config.ts roxer@185.190.39.248:"/home/roxer/CRM\ project/frontend/"
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" frontend/tailwind.config.ts roxer@185.190.39.248:"/home/roxer/CRM\ project/frontend/"
 
-if [ ! -f "frontend/.env" ]; then
-    echo "❌ Error: frontend/.env is missing. Please create it using production credentials."
-    exit 1
-fi
+echo "📦 2. Syncing Backend Source Code..."
+rsync -avz --delete --exclude 'node_modules' --exclude 'dist' -e "ssh -i ~/.ssh/crm_production_ed25519 -o ServerAliveInterval=60" backend/src/ roxer@185.190.39.248:"/home/roxer/CRM\ project/backend/src/"
+rsync -avz --delete -e "ssh -i ~/.ssh/crm_production_ed25519" backend/prisma/ roxer@185.190.39.248:"/home/roxer/CRM\ project/backend/prisma/"
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" backend/package*.json roxer@185.190.39.248:"/home/roxer/CRM\ project/backend/"
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" backend/*.ts roxer@185.190.39.248:"/home/roxer/CRM\ project/backend/"
 
-if [ ! -d ".secrets" ]; then
-    echo "❌ Error: .secrets directory is missing."
-    exit 1
-fi
+echo "📦 3. Syncing Configs..."
+rsync -avz -e "ssh -i ~/.ssh/crm_production_ed25519" docker-compose.production.yml roxer@185.190.39.248:"/home/roxer/CRM\ project/"
 
-if [ ! -f ".secrets/jwt_secret.txt" ] || [ ! -f ".secrets/encryption_key.txt" ]; then
-    echo "❌ Error: Secret files missing in .secrets/"
-    exit 1
-fi
+echo "⚙️  4. Building and Restarting Docker Containers on Server..."
+ssh -i ~/.ssh/crm_production_ed25519 -o ServerAliveInterval=60 roxer@185.190.39.248 "cd '/home/roxer/CRM project' && docker compose -f docker-compose.production.yml up -d --build"
 
-# 2. Build images
-echo "🔨 Building Docker images..."
-docker compose -f docker-compose.production.yml build
-
-# 3. Start DB, Redis, MinIO first
-echo "🚀 Starting infrastructure containers (db, redis, minio)..."
-docker compose -f docker-compose.production.yml up -d db redis minio
-
-# 4. Wait for dependencies
-echo "⏳ Waiting for PostgreSQL to be ready..."
-# We can use docker inspect or pg_isready
-MAX_RETRIES=30
-RETRY_COUNT=0
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if docker compose -f docker-compose.production.yml exec db pg_isready -U postgres >/dev/null 2>&1; then
-        echo "✅ PostgreSQL is ready!"
-        break
-    fi
-    echo "Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 2
-    RETRY_COUNT=$((RETRY_COUNT+1))
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ Error: PostgreSQL failed to become ready."
-    docker compose -f docker-compose.production.yml logs db
-    exit 1
-fi
-
-echo "⏳ Waiting for Redis..."
-# Redis should be ready quickly, just give it a sec
-sleep 2
-
-# 5. Run Prisma migrations
-echo "🔄 Running Prisma migrations..."
-if ! docker compose -f docker-compose.production.yml run --rm backend sh -c "npx --yes prisma migrate deploy"; then
-    echo "❌ Error: Prisma migration failed."
-    exit 1
-fi
-
-# 6. Start the rest of the stack
-echo "🚀 Starting backend and frontend..."
-docker compose -f docker-compose.production.yml up -d backend frontend
-
-# 7. Wait for backend health
-echo "⏳ Waiting for backend health check..."
-RETRY_COUNT=0
-while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -s http://localhost:3000/api/v1/health | grep -q '"status":"ok"'; then
-        echo "✅ Backend is healthy!"
-        break
-    fi
-    echo "Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 3
-    RETRY_COUNT=$((RETRY_COUNT+1))
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ Error: Backend failed to become healthy."
-    docker compose -f docker-compose.production.yml logs backend
-    exit 1
-fi
-
-# 8. Print final container status
-echo "====================================="
-echo "✅ Deployment successful! Container status:"
-docker compose -f docker-compose.production.yml ps
-echo "====================================="
+echo "================================================="
+echo "✅ Deployment Successfully Finished!"
