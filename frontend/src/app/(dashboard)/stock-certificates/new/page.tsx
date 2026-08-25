@@ -74,19 +74,19 @@ export default function NewStockCertificatePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">شماره ثبت (اختیاری)</label>
-              <input type="text" name="registrationNumber" value={formData.registrationNumber} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="registrationNumber" value={formData.registrationNumber} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ ثبت (اختیاری)</label>
-              <input type="text" name="registrationDate" value={formData.registrationDate} onChange={handleChange} placeholder="مثال: 1403/05/15" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="registrationDate" value={formData.registrationDate} onChange={handleChange} placeholder="مثال: 1403/05/15" className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">محل ثبت</label>
-              <input type="text" name="registrationLocation" required value={formData.registrationLocation} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="registrationLocation" required value={formData.registrationLocation} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">سرمایه ثبت شده (ریال)</label>
-              <input type="text" name="registeredCapital" required value={formData.registeredCapital} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="registeredCapital" required value={formData.registeredCapital} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
         </div>
@@ -97,15 +97,15 @@ export default function NewStockCertificatePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی</label>
-              <input type="text" name="shareholderName" required value={formData.shareholderName} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="shareholderName" required value={formData.shareholderName} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">نام پدر</label>
-              <input type="text" name="fatherName" required value={formData.fatherName} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="fatherName" required value={formData.fatherName} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">شماره ملی</label>
-              <input type="text" name="nationalId" required value={formData.nationalId} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="nationalId" required value={formData.nationalId} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
         </div>
@@ -116,27 +116,27 @@ export default function NewStockCertificatePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">تعداد سهام به عدد</label>
-              <input type="number" name="sharesCount" required min="1" value={formData.sharesCount} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="number" name="sharesCount" required min="1" value={formData.sharesCount} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">ارزش ریالی هر سهم</label>
-              <input type="number" name="shareValue" required min="1" value={formData.shareValue} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="number" name="shareValue" required min="1" value={formData.shareValue} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">سرمایه پرداخت شده (مبلغ کل - ریال)</label>
-              <input type="number" name="totalAmount" required min="1" value={formData.totalAmount} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="number" name="totalAmount" required min="1" value={formData.totalAmount} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">سرمایه پرداخت شده به حروف</label>
-              <input type="text" name="amountInWords" required value={formData.amountInWords} onChange={handleChange} placeholder="مثال: شصت میلیارد ریال" className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="text" name="amountInWords" required value={formData.amountInWords} onChange={handleChange} placeholder="مثال: شصت میلیارد ریال" className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">از شماره سهم</label>
-              <input type="number" name="shareRangeFrom" required value={formData.shareRangeFrom} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="number" name="shareRangeFrom" required value={formData.shareRangeFrom} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">تا شماره سهم</label>
-              <input type="number" name="shareRangeTo" required value={formData.shareRangeTo} onChange={handleChange} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input type="number" name="shareRangeTo" required value={formData.shareRangeTo} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded-lg text-gray-900 bg-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
         </div>
