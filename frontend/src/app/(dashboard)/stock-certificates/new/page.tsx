@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import { useRouter } from 'next/navigation';
 import { Save, ArrowRight } from 'lucide-react';
@@ -10,6 +10,16 @@ import toast from 'react-hot-toast';
 export default function NewStockCertificatePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/auth/me').then(res => {
+      setCurrentUser(res.user);
+    }).catch(() => {}).finally(() => setAuthLoading(false));
+  }, []);
+
+  const isAdmin = currentUser?.role?.name === 'SystemAdmin' || currentUser?.role?.name === 'Admin';
   const [formData, setFormData] = useState({
     shareholderName: '',
     fatherName: '',
@@ -56,6 +66,15 @@ export default function NewStockCertificatePage() {
       setLoading(false);
     }
   };
+
+  if (!authLoading && !isAdmin) {
+    return (
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-red-200 text-center space-y-3">
+        <h2 className="text-xl font-bold text-red-600">دسترسی غیرمجاز</h2>
+        <p className="text-gray-600">صدور و مدیریت گواهی‌های سهام منحصر به مدیر سیستم (Admin) است.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

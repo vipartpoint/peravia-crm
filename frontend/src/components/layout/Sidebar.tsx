@@ -11,13 +11,15 @@ import {
   BrainCircuit, Presentation, Building, Archive, ArrowLeftRight, 
   ReceiptText, CreditCard, Wallet, Target, Award, Trophy, 
   PieChart, Package, FileCheck2, LockKeyhole, MonitorSmartphone, 
-  ShieldAlert, Settings, LogOut, ChevronLeft, TrendingUp, Map
+  ShieldAlert, Settings, LogOut, ChevronLeft, TrendingUp, Map,
+  Warehouse, List, FlaskConical, ShieldCheck, Box
 } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   onLogoutClick: () => void;
   isMobile?: boolean;
+  user?: any;
 }
 
 // Grouped Menu structure
@@ -31,6 +33,7 @@ const menuGroups = [
   {
     label: 'فروش',
     items: [
+      { icon: Building, label: 'اکانت‌های کلیدی', href: '/accounts' },
       { icon: Users, label: 'سرنخ‌ها', href: '/leads' },
       { icon: TrendingUp, label: 'فرصت‌های فروش', href: '/opportunities' },
       { icon: PieChart, label: 'گزارش قیف فروش', href: '/opportunities/dashboard' },
@@ -52,10 +55,14 @@ const menuGroups = [
   {
     label: 'انبار',
     items: [
-      { icon: Building, label: 'انبارها', href: '/warehouses' },
+      { icon: Warehouse, label: 'انبارها', href: '/warehouses' },
       { icon: Archive, label: 'موجودی', href: '/inventory' },
       { icon: ArrowLeftRight, label: 'گردش کالا', href: '/inventory/movements' },
       { icon: Package, label: 'محصولات', href: '/products' },
+      { icon: List, label: 'دسته‌بندی محصولات', href: '/inventory/categories' },
+      { icon: FlaskConical, label: 'گرید ویسکوزیته', href: '/inventory/viscosity' },
+      { icon: ShieldCheck, label: 'استاندارد API', href: '/inventory/api-standards' },
+      { icon: Box, label: 'حجم بسته‌بندی', href: '/inventory/volumes' },
     ]
   },
   {
@@ -76,6 +83,19 @@ const menuGroups = [
     ]
   },
   {
+    label: 'رهگیری و وفاداری',
+    items: [
+      { icon: Package, label: 'موتور اصالت کالا (QR)', href: '/qr-engine' },
+      { icon: Award, label: 'باشگاه مشتریان', href: '/loyalty' },
+    ]
+  },
+  {
+    label: 'سهام',
+    items: [
+      { icon: FileCheck2, label: 'گواهی سهام', href: '/stock-certificates', roles: ['SystemAdmin', 'Admin'] },
+    ]
+  },
+  {
     label: 'مدیریت و امنیت',
     items: [
       { icon: Users, label: 'مدیریت کاربران', href: '/users' },
@@ -88,7 +108,7 @@ const menuGroups = [
   }
 ];
 
-export function Sidebar({ isOpen, onLogoutClick, isMobile = false }: SidebarProps) {
+export function Sidebar({ isOpen, onLogoutClick, isMobile = false, user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -127,7 +147,10 @@ export function Sidebar({ isOpen, onLogoutClick, isMobile = false }: SidebarProp
               </div>
             )}
             <ul className="space-y-1 px-3">
-              {group.items.map((item) => {
+              {group.items.filter((item: any) => {
+                if (!item.roles) return true;
+                return item.roles.includes(user?.role?.name);
+              }).map((item: any) => {
                 // Find the best match (longest href) across all menu items
                 const allItems = menuGroups.flatMap(g => g.items);
                 const matchingItems = allItems.filter(i => pathname === i.href || pathname.startsWith(i.href + '/'));

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
-import { FileText, Plus, Search, Filter, Printer, X, Save } from 'lucide-react';
+import { FileText, Plus, Search, Filter, Printer, X, Save, Trash2 } from 'lucide-react';
 import moment from 'moment-jalaali';
 import { StockCertificatePrintModal } from '@/components/modals/StockCertificatePrintModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +34,29 @@ export default function StockCertificatesPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [formData, setFormData] = useState(initialForm);
   const [formLoading, setFormLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/auth/me').then(res => {
+      setCurrentUser(res.user);
+    }).catch(() => {}).finally(() => setAuthLoading(false));
+  }, []);
+
+  const isAdmin = currentUser?.role?.name === 'SystemAdmin' || currentUser?.role?.name === 'Admin';
+
+  const handleDelete = async (id: string, serialNumber: string) => {
+    if (!window.confirm(`آیا از حذف گواهی سهام با شماره سریال «${serialNumber}» اطمینان دارید؟`)) {
+      return;
+    }
+    try {
+      await api.delete(`/stock-certificates/${id}`);
+      toast.success('گواهی سهام با موفقیت حذف شد');
+      fetchCertificates();
+    } catch (error: any) {
+      toast.error(error.message || 'خطا در حذف گواهی سهام');
+    }
+  };
 
   const fetchCertificates = async () => {
     setLoading(true);
@@ -86,6 +109,15 @@ export default function StockCertificatesPage() {
       setFormLoading(false);
     }
   };
+
+  if (!authLoading && !isAdmin) {
+    return (
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-red-200 text-center space-y-3">
+        <h2 className="text-xl font-bold text-red-600">دسترسی غیرمجاز</h2>
+        <p className="text-gray-600">مشاهده و مدیریت گواهی‌های سهام منحصر به مدیر سیستم (Admin) است.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,13 +189,21 @@ export default function StockCertificatesPage() {
                     <td className="px-6 py-4">{cert.sharesCount.toLocaleString()}</td>
                     <td className="px-6 py-4">{parseFloat(cert.totalAmount).toLocaleString()}</td>
                     <td className="px-6 py-4">{moment(cert.issueDate).format('jYYYY/jMM/jDD')}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
                       <button
                         onClick={() => { setSelectedCert(cert); setIsPrintModalOpen(true); }}
                         className="text-indigo-600 hover:text-indigo-900 inline-flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-md transition-colors"
                       >
                         <Printer className="w-4 h-4" />
                         چاپ
+                      </button>
+                      <button
+                        onClick={() => handleDelete(cert.id, cert.serialNumber)}
+                        className="text-red-600 hover:text-red-900 inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"
+                        title="حذف گواهی سهام"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        حذف
                       </button>
                     </td>
                   </tr>

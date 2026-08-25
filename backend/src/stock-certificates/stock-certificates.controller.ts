@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { StockCertificatesService } from './stock-certificates.service';
 import { CreateStockCertificateDto } from './dto/create-stock-certificate.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,7 +11,7 @@ export class StockCertificatesController {
   constructor(private readonly stockCertificatesService: StockCertificatesService) {}
 
   @Post()
-  @Roles('SystemAdmin')
+  @Roles('SystemAdmin', 'Admin')
   create(@Body() createStockCertificateDto: CreateStockCertificateDto, @Req() req: any) {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException();
@@ -20,14 +20,20 @@ export class StockCertificatesController {
   }
 
   @Get()
-  @Roles('SystemAdmin')
+  @Roles('SystemAdmin', 'Admin')
   findAll(@Query() query: any) {
     return this.stockCertificatesService.findAll(query);
   }
 
   @Get(':id')
-  @Roles('SystemAdmin')
+  @Roles('SystemAdmin', 'Admin')
   findOne(@Param('id') id: string) {
     return this.stockCertificatesService.findOne(id);
+  }
+
+  @Delete(':id')
+  @Roles('SystemAdmin', 'Admin')
+  remove(@Param('id') id: string) {
+    return this.stockCertificatesService.remove(id);
   }
 }

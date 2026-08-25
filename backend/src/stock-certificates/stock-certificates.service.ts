@@ -111,4 +111,14 @@ export class StockCertificatesService {
       },
     });
   }
+
+  async remove(id: string) {
+    try {
+      return await this.prisma.stockCertificate.delete({
+        where: { id },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to delete stock certificate');
+    }
+  }
 }
