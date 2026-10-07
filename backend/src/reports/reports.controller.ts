@@ -34,6 +34,11 @@ export class ReportsController {
     return this.reportsService.getPerformanceReports(filters, req.user);
   }
 
+  @Get('intelligence')
+  getIntelligence(@Query() filters: any, @Req() req: any) {
+    return this.reportsService.getIntelligenceReports(filters, req.user);
+  }
+
   @Post('export')
   async exportReport(
     @Body('type') type: string,
