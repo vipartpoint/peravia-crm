@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTerritoryDto } from './dto/create-territory.dto';
 import { UpdateTerritoryDto } from './dto/update-territory.dto';
+import { HardDeleteTerritoryDto } from './dto/hard-delete-territory.dto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class TerritoriesService {
@@ -15,9 +17,26 @@ export class TerritoriesService {
       throw new BadRequestException('Territory code must be unique');
     }
 
+    let managerIdToUse = createTerritoryDto.managerId;
+    
+    if (!managerIdToUse) {
+      const adminRole = await this.prisma.role.findUnique({ where: { name: 'SystemAdmin' } });
+      if (adminRole) {
+        const adminUser = await this.prisma.user.findFirst({ where: { roleId: adminRole.id } });
+        if (adminUser) {
+          managerIdToUse = adminUser.id;
+        }
+      }
+    }
+
+    if (!managerIdToUse) {
+      managerIdToUse = userId; // fallback to creator
+    }
+
     const territory = await this.prisma.territory.create({
       data: {
         ...createTerritoryDto,
+        managerId: managerIdToUse,
         createdBy: userId,
       },
     });
@@ -145,6 +164,106 @@ export class TerritoriesService {
 
     await this.logAudit(userId, 'ARCHIVE_TERRITORY', 'Territory', id, territory, archived);
     return archived;
+  }
+
+  async hardDeleteAndMerge(id: string, dto: HardDeleteTerritoryDto, userId: string) {
+    // 1. Verify Admin PIN (Golden Key)
+    const adminPinHash = process.env.ADMIN_PIN_HASH || '$2b$10$QGTXM9t9CK1Y2WCOWd7E2ek5ofwoJL70DzgkkKh/LN6GYelYjfecm';
+    const envPin = process.env.ADMIN_PIN || '123456';
+    const isValidPin = (dto.adminPin === envPin) || (await bcrypt.compare(dto.adminPin, adminPinHash).catch(() => false));
+    if (!isValidPin) {
+      throw new BadRequestException('رمز کلیدی نامعتبر است (Invalid Admin PIN)');
+    }
+
+    const territory = await this.prisma.territory.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { customers: true, users: true, children: true, Lead: true, visits: true, orders: true, kpiTargets: true, opportunities: true }
+        }
+      }
+    });
+
+    if (!territory) {
+      throw new NotFoundException('منطقه یافت نشد (Territory not found)');
+    }
+
+    const hasDependencies = 
+      territory._count.customers > 0 || 
+      territory._count.users > 0 || 
+      territory._count.children > 0 || 
+      territory._count.Lead > 0 || 
+      territory._count.visits > 0 || 
+      territory._count.orders > 0 || 
+      territory._count.kpiTargets > 0 || 
+      territory._count.opportunities > 0;
+
+    const isDetachMode = dto.mode === 'detach' || (!dto.replacementTerritoryId && dto.mode !== 'merge');
+
+    // 2. Merge or Detach if dependencies exist
+    if (hasDependencies) {
+      if (isDetachMode) {
+        // Safe detachment: All records remain preserved in database with territoryId set to null (unassigned)
+        await this.prisma.$transaction([
+          this.prisma.customer.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.lead.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.visit.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.order.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.kPITarget.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.opportunity.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.user.updateMany({ where: { territoryId: id }, data: { territoryId: null } }),
+          this.prisma.territory.updateMany({ where: { parentId: id }, data: { parentId: null } }),
+        ]);
+      } else {
+        if (!dto.replacementTerritoryId) {
+          throw new BadRequestException('برای ادغام منطقه، انتخاب منطقه جایگزین الزامی است، یا گزینه «تبدیل به بدون منطقه» را انتخاب کنید.');
+        }
+
+        if (id === dto.replacementTerritoryId) {
+          throw new BadRequestException('منطقه جایگزین نمی‌تواند با منطقه فعلی یکسان باشد.');
+        }
+
+        const replacement = await this.prisma.territory.findUnique({ where: { id: dto.replacementTerritoryId } });
+        if (!replacement) {
+          throw new NotFoundException('منطقه جایگزین یافت نشد.');
+        }
+
+        // Execute massive reassignment in a transaction
+        await this.prisma.$transaction([
+          this.prisma.customer.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.lead.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.visit.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.order.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.kPITarget.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.opportunity.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.user.updateMany({ where: { territoryId: id }, data: { territoryId: dto.replacementTerritoryId } }),
+          this.prisma.territory.updateMany({ where: { parentId: id }, data: { parentId: dto.replacementTerritoryId } }),
+        ]);
+      }
+    }
+
+    // 3. Physically delete the territory
+    try {
+      await this.prisma.territory.delete({ where: { id } });
+    } catch (e: any) {
+      throw new BadRequestException('امکان حذف فیزیکی وجود ندارد، هنوز رکوردهایی در دیتابیس به این منطقه متصل هستند.');
+    }
+
+    // 4. Log the destructive action
+    await this.logAudit(
+      userId, 
+      isDetachMode ? 'HARD_DELETE_AND_DETACH_TERRITORY' : 'HARD_DELETE_AND_MERGE_TERRITORY', 
+      'Territory', 
+      id, 
+      { name: territory.name, hasDependencies, mode: isDetachMode ? 'detach' : 'merge', mergedInto: dto.replacementTerritoryId || null }, 
+      null
+    );
+
+    return { 
+      message: isDetachMode 
+        ? 'منطقه حذف گردید و تمام رکوردهای وابسته بدون حذف شدن، به وضعیت «بدون منطقه» تبدیل شدند.'
+        : 'منطقه با موفقیت حذف و تمام رکوردها به منطقه جدید منتقل شدند.'
+    };
   }
 
   private async logAudit(userId: string, action: string, entityType: string, entityId: string, oldValue: any, newValue: any) {

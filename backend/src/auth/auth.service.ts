@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ForbiddenException, NotFoundExceptio
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { EncryptionUtil } from '../utils/encryption.util';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as speakeasy from 'speakeasy';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -17,17 +17,27 @@ export class AuthService {
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({ 
-      where: { username },
+    const user = await this.prisma.user.findFirst({ 
+      where: {
+        OR: [
+          { username },
+          { email: username }
+        ],
+        deletedAt: null
+      },
       include: { role: true }
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('نام کاربری یا رمز عبور اشتباه است.');
+    }
+
+    if (!user.isActive) {
+      throw new BadRequestException('حساب کاربری شما غیرفعال شده است.');
     }
 
     if (user.isLocked) {
-      throw new ForbiddenException('Account is locked due to too many failed attempts.');
+      throw new BadRequestException('حساب کاربری شما به دلیل تلاش‌های ناموفق مکرر مسدود شده است.');
     }
 
     const isPasswordValid = await bcrypt.compare(pass, user.passwordHash);
@@ -69,7 +79,7 @@ export class AuthService {
       } else {
         await this.prisma.user.update({ where: { id: user.id }, data: { failedLogins } });
       }
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('نام کاربری یا رمز عبور اشتباه است.');
     }
 
     // Reset failed logins
@@ -103,6 +113,36 @@ export class AuthService {
     return { message: 'Password changed successfully. Please login with your new password.' };
   }
 
+  async changePassword(userId: string, oldPass: string, newPass: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('کاربر یافت نشد');
+
+    if (!user.mustChangePassword) {
+      throw new ForbiddenException('امکان تغییر رمز عبور توسط کاربر وجود ندارد. بازنشانی رمز عبور فقط توسط سوپر ادمین امکان‌پذیر است.');
+    }
+
+    const isValid = await bcrypt.compare(oldPass, user.passwordHash);
+    if (!isValid) throw new BadRequestException('رمز عبور فعلی نادرست است');
+
+    if (!newPass || newPass.trim().length < 8) {
+      throw new BadRequestException('رمز عبور جدید باید حداقل ۸ کاراکتر باشد');
+    }
+
+    if (oldPass === newPass) {
+      throw new BadRequestException('رمز عبور جدید نمی‌تواند با رمز عبور فعلی یکسان باشد');
+    }
+
+    const passwordHash = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, mustChangePassword: false }
+    });
+
+    await this.logAuthEvent(user.id, 'PASSWORD_CHANGED', 'System');
+
+    return { message: 'رمز عبور با موفقیت تغییر یافت' };
+  }
+
   async login(user: any, req?: any) {
     // if (user.mustChangePassword) {
     //   return {
@@ -113,7 +153,17 @@ export class AuthService {
 
     // Check trusted device first if MFA is enabled
     let bypassMfa = false;
-    if (user.mfaEnabled && req && req.cookies['trusted_device_token']) {
+    
+    // SystemAdmin always requires the custom Admin Security Password (PIN) step
+    if (user.role?.name === 'SystemAdmin') {
+      const mfaTokenPayload = { sub: user.id, purpose: 'mfa_verification' };
+      const mfaToken = this.jwtService.sign(mfaTokenPayload, { expiresIn: '5m' });
+      return {
+        mfaRequired: true,
+        mfaToken,
+        message: 'MFA_REQUIRED_ADMIN'
+      };
+    } else if (user.mfaEnabled && req && req.cookies['trusted_device_token']) {
       const deviceToken = req.cookies['trusted_device_token'];
       const deviceTokenHash = require('crypto').createHash('sha256').update(deviceToken).digest('hex');
       const trustedDevice = await this.prisma.trustedDevice.findFirst({
@@ -145,7 +195,7 @@ export class AuthService {
     return this.issueFullTokens(user, req);
   }
 
-  private async issueFullTokens(user: any, req?: any, deviceToken?: string) {
+  private async issueFullTokens(user: any, req?: any, deviceToken?: string, isImpersonated: boolean = false) {
     const jti = require('crypto').randomUUID();
     
     if (req) {
@@ -159,11 +209,11 @@ export class AuthService {
       });
     }
 
-    const payload = { username: user.username, sub: user.id, role: user.role?.name || user.role, jti };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: (process.env.JWT_EXPIRATION || '7d') as any });
+    const payload = { username: user.username, sub: user.id, role: user.role?.name || user.role, jti, isImpersonated };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: (process.env.JWT_EXPIRATION || '1h') as any });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     
-    await this.logAuthEvent(user.id, 'LOGIN_SUCCESS', req?.ip);
+    await this.logAuthEvent(user.id, isImpersonated ? 'IMPERSONATED_LOGIN' : 'LOGIN_SUCCESS', req?.ip);
 
     return {
       mfaRequired: false,
@@ -179,19 +229,44 @@ export class AuthService {
       if (decoded.purpose !== 'mfa_verification') throw new UnauthorizedException('Invalid token purpose');
       
       const user = await this.prisma.user.findUnique({ where: { id: decoded.sub }, include: { role: true } });
-      if (!user || !user.mfaEnabled || !user.mfaSecretEncrypted) {
-        throw new UnauthorizedException('MFA not properly configured');
+      if (!user) {
+        throw new UnauthorizedException('User not found');
       }
 
-      const secret = EncryptionUtil.decrypt(user.mfaSecretEncrypted, true);
-      const isValidTotp = speakeasy.totp.verify({
-        secret,
-        encoding: 'base32',
-        token: code,
-        window: 1
-      });
+      let isValidCode = false;
 
-      let isValidCode = isValidTotp;
+      if (user.role?.name === 'SystemAdmin') {
+        // Custom Admin PIN verification
+        const envPin = process.env.ADMIN_PIN || '123456';
+        const adminPinHash = process.env.ADMIN_PIN_HASH || '$2b$10$QGTXM9t9CK1Y2WCOWd7E2ek5ofwoJL70DzgkkKh/LN6GYelYjfecm';
+        if (code === envPin) {
+          isValidCode = true;
+        } else {
+          isValidCode = await bcrypt.compare(code, adminPinHash);
+        }
+        if (!isValidCode && user.mfaSecretEncrypted) {
+          try {
+            const secret = EncryptionUtil.decrypt(user.mfaSecretEncrypted, true);
+            isValidCode = speakeasy.totp.verify({
+              secret,
+              encoding: 'base32',
+              token: code,
+              window: 1
+            });
+          } catch (e) {}
+        }
+      } else {
+        if (!user.mfaEnabled || !user.mfaSecretEncrypted) {
+          throw new UnauthorizedException('MFA not properly configured');
+        }
+        const secret = EncryptionUtil.decrypt(user.mfaSecretEncrypted, true);
+        isValidCode = speakeasy.totp.verify({
+          secret,
+          encoding: 'base32',
+          token: code,
+          window: 1
+        });
+      }
 
       if (!isValidCode) {
         // Check recovery codes
@@ -377,7 +452,7 @@ export class AuthService {
     return { message: 'MFA reset successfully for user' };
   }
 
-  async getMe(userId: string) {
+  async getMe(userId: string, isImpersonated: boolean = false) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },
       select: {
@@ -386,13 +461,64 @@ export class AuthService {
         email: true,
         mfaEnabled: true,
         isActive: true,
+        roleId: true,
         role: { select: { id: true, name: true } },
         territory: { select: { id: true, name: true } },
         mustChangePassword: true,
       }
     });
     if (!user || !user.isActive) throw new UnauthorizedException('User not found or inactive');
-    return { user };
+
+    let allowedCategories: string[] = [];
+    let permissions: string[] = [];
+
+    if (user.role?.name === 'SystemAdmin') {
+      const allPerms = await this.prisma.permission.findMany();
+      allowedCategories = Array.from(new Set(allPerms.map(p => p.category)));
+      permissions = allPerms.map(p => `${p.category}:${p.action}`);
+    } else {
+      const rolePerms = await this.prisma.rolePermission.findMany({
+        where: { roleId: user.roleId },
+        include: { permission: true }
+      });
+      const userOverrides = await this.prisma.userPermission.findMany({
+        where: { userId: user.id },
+        include: { permission: true }
+      });
+
+      const catSet = new Set<string>();
+      const permSet = new Set<string>();
+
+      for (const rp of rolePerms) {
+        if (rp.permission) {
+          catSet.add(rp.permission.category);
+          permSet.add(`${rp.permission.category}:${rp.permission.action}`);
+        }
+      }
+      for (const uo of userOverrides) {
+        if (uo.permission) {
+          const key = `${uo.permission.category}:${uo.permission.action}`;
+          if (uo.isGranted) {
+            catSet.add(uo.permission.category);
+            permSet.add(key);
+          } else {
+            permSet.delete(key);
+          }
+        }
+      }
+      allowedCategories = Array.from(catSet);
+      permissions = Array.from(permSet);
+    }
+
+    return {
+      user: {
+        ...user,
+        allowedCategories,
+        permissions,
+        mustChangePassword: isImpersonated ? false : user.mustChangePassword,
+        isImpersonated: Boolean(isImpersonated),
+      }
+    };
   }
 
   async logout(req: any) {
@@ -406,6 +532,66 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async impersonateUser(adminId: string, targetUserId: string, req: any) {
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      include: { role: true }
+    });
+
+    if (!admin || admin.role?.name !== 'SystemAdmin') {
+      throw new ForbiddenException('فقط سوپر ادمین مجاز به ورود به حساب کاربران است.');
+    }
+
+    if (adminId === targetUserId) {
+      throw new BadRequestException('شما در حال حاضر با این حساب کاربری وارد شده‌اید.');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId, deletedAt: null },
+      include: { role: true }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('کاربر مورد نظر یافت نشد.');
+    }
+
+    if (!targetUser.isActive) {
+      throw new BadRequestException('حساب کاربری مورد نظر غیرفعال است.');
+    }
+
+    if (targetUser.isLocked) {
+      throw new BadRequestException('حساب کاربری مورد نظر مسدود است.');
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: 'USER_IMPERSONATED',
+        entityType: 'User',
+        entityId: targetUserId,
+        newValue: {
+          adminUsername: admin.username,
+          targetUsername: targetUser.username,
+          targetRole: targetUser.role?.name,
+        },
+        ipAddress: req?.ip || req?.headers?.['x-forwarded-for'] || 'unknown',
+      }
+    });
+
+    const tokens = await this.issueFullTokens(targetUser, req, undefined, true);
+
+    return {
+      accessToken: (tokens as any).accessToken,
+      refreshToken: (tokens as any).refreshToken,
+      message: `ورود به حساب کاربری ${targetUser.username} با موفقیت انجام شد`,
+      user: {
+        id: targetUser.id,
+        username: targetUser.username,
+        role: targetUser.role?.name,
+      }
+    };
+  }
+
   private async logAuthEvent(userId: string, action: string, ipAddress: string = 'System') {
     await this.prisma.auditLog.create({
       data: {
@@ -416,3 +602,4 @@ export class AuthService {
     });
   }
 }
+

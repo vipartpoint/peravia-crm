@@ -8,11 +8,30 @@ import { useGlobalEntity } from '@/contexts/GlobalEntityContext';
 import { Button } from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
 import { Dictionary } from '@/utils/constants/dictionary';
+import { HardDeleteTerritoryModal } from '@/components/forms/HardDeleteTerritoryModal';
 
 export default function TerritoriesPage() {
   const [territories, setTerritories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<any | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const { openCreate } = useGlobalEntity();
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        if (res?.user) {
+          setUserRole(res.user.role?.name || res.user.role || '');
+          setUserPermissions(res.user.permissions || []);
+        }
+      } catch (e) {
+        console.error('Failed to fetch user role', e);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   const fetchTerritories = async () => {
     try {
@@ -61,6 +80,19 @@ export default function TerritoriesPage() {
           currentPage={1}
           onPageChange={() => {}}
           onRefresh={fetchTerritories}
+          onHardDelete={(userRole === 'SystemAdmin' || userPermissions.includes('Territories:Delete') || userPermissions.includes('Territories:Manage')) ? (row) => setHardDeleteTarget(row) : undefined}
+        />
+      )}
+
+      {hardDeleteTarget && (
+        <HardDeleteTerritoryModal
+          territory={hardDeleteTarget}
+          territories={territories}
+          onClose={() => setHardDeleteTarget(null)}
+          onSuccess={() => {
+            setHardDeleteTarget(null);
+            fetchTerritories();
+          }}
         />
       )}
     </div>
