@@ -9,10 +9,26 @@ import { PermissionsGuard } from '../permissions/guards/permissions.guard';
 import { RequirePermissions } from '../permissions/decorators/permissions.decorator';
 import type { Request } from 'express';
 
+import { UpdateAdminPinDto } from './dto/update-admin-pin.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+
 @UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
 @Controller('territories')
 export class TerritoriesController {
   constructor(private readonly territoriesService: TerritoriesService) {}
+
+  @Roles('SystemAdmin')
+  @Get('admin-pin/status')
+  getAdminPinStatus() {
+    return this.territoriesService.getAdminPinStatus();
+  }
+
+  @Roles('SystemAdmin')
+  @Post('admin-pin')
+  updateAdminPin(@Body() dto: UpdateAdminPinDto, @Req() req: Request) {
+    const user = req.user as any;
+    return this.territoriesService.updateAdminPin(dto.currentPin, dto.newPin, user.id);
+  }
 
   @RequirePermissions({ category: 'Territories', action: 'Create' })
   @Post()
@@ -57,3 +73,4 @@ export class TerritoriesController {
     return this.territoriesService.hardDeleteAndMerge(id, hardDeleteDto, user.id);
   }
 }
+

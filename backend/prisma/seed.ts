@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -9,6 +9,7 @@ async function main() {
   // 1. Setup Roles
   const rolesData = [
     'SystemAdmin',
+    'CompanyAdmin',
     'CEO',
     'SalesManager',
     'RegionalManager',
@@ -51,43 +52,43 @@ async function main() {
   const iran = await prisma.territory.upsert({
     where: { code: 'IR' },
     update: {},
-    create: { name: 'ایران', code: 'IR', type: 'Country', createdBy: admin.id }
+    create: { name: 'ایران', code: 'IR', type: 'Country', createdBy: admin.id, managerId: admin.id }
   });
 
   const tehranProv = await prisma.territory.upsert({
     where: { code: 'THR' },
     update: {},
-    create: { name: 'تهران', code: 'THR', type: 'Province', parentId: iran.id, createdBy: admin.id }
+    create: { name: 'تهران', code: 'THR', type: 'Province', parentId: iran.id, createdBy: admin.id, managerId: admin.id }
   });
 
   const tehranNorth = await prisma.territory.upsert({
     where: { code: 'THR-N' },
     update: {},
-    create: { name: 'تهران شمال', code: 'THR-N', type: 'SalesRegion', parentId: tehranProv.id, createdBy: admin.id }
+    create: { name: 'تهران شمال', code: 'THR-N', type: 'SalesRegion', parentId: tehranProv.id, createdBy: admin.id, managerId: admin.id }
   });
 
   await prisma.territory.upsert({
     where: { code: 'THR-N-1' },
     update: {},
-    create: { name: 'مسیر ویزیت ۱ تهران شمال', code: 'THR-N-1', type: 'VisitRoute', parentId: tehranNorth.id, createdBy: admin.id }
+    create: { name: 'مسیر ویزیت ۱ تهران شمال', code: 'THR-N-1', type: 'VisitRoute', parentId: tehranNorth.id, createdBy: admin.id, managerId: admin.id }
   });
 
   const fars = await prisma.territory.upsert({
     where: { code: 'FRS' },
     update: {},
-    create: { name: 'فارس', code: 'FRS', type: 'Province', parentId: iran.id, createdBy: admin.id }
+    create: { name: 'فارس', code: 'FRS', type: 'Province', parentId: iran.id, createdBy: admin.id, managerId: admin.id }
   });
 
   const shiraz = await prisma.territory.upsert({
     where: { code: 'SHZ' },
     update: {},
-    create: { name: 'شیراز', code: 'SHZ', type: 'City', parentId: fars.id, createdBy: admin.id }
+    create: { name: 'شیراز', code: 'SHZ', type: 'City', parentId: fars.id, createdBy: admin.id, managerId: admin.id }
   });
 
   await prisma.territory.upsert({
     where: { code: 'SHZ-C' },
     update: {},
-    create: { name: 'شیراز مرکز', code: 'SHZ-C', type: 'SalesRegion', parentId: shiraz.id, createdBy: admin.id }
+    create: { name: 'شیراز مرکز', code: 'SHZ-C', type: 'SalesRegion', parentId: shiraz.id, createdBy: admin.id, managerId: admin.id }
   });
 
   console.log('Territories seeded.');
@@ -95,11 +96,25 @@ async function main() {
   // 4. Setup Products
   console.log('Seeding Products...');
   
+  const catPassenger = await prisma.productCategory.upsert({ where: { name: 'Passenger Car Motor Oil' }, update: {}, create: { name: 'Passenger Car Motor Oil' } });
+  const catDiesel = await prisma.productCategory.upsert({ where: { name: 'Heavy Duty Diesel' }, update: {}, create: { name: 'Heavy Duty Diesel' } });
+  const catIndustrial = await prisma.productCategory.upsert({ where: { name: 'Industrial Oil' }, update: {}, create: { name: 'Industrial Oil' } });
+
+  const vis5w30 = await prisma.viscosityGrade.upsert({ where: { name: '5W-30' }, update: {}, create: { name: '5W-30' } });
+  const vis15w40 = await prisma.viscosityGrade.upsert({ where: { name: '15W-40' }, update: {}, create: { name: '15W-40' } });
+  const vis10w40 = await prisma.viscosityGrade.upsert({ where: { name: '10W-40' }, update: {}, create: { name: '10W-40' } });
+  const vis68 = await prisma.viscosityGrade.upsert({ where: { name: 'ISO VG 68' }, update: {}, create: { name: 'ISO VG 68' } });
+
+  const apiSN = await prisma.apiStandard.upsert({ where: { name: 'SN/CF' }, update: {}, create: { name: 'SN/CF' } });
+  const apiCI4 = await prisma.apiStandard.upsert({ where: { name: 'CI-4' }, update: {}, create: { name: 'CI-4' } });
+  const apiSM = await prisma.apiStandard.upsert({ where: { name: 'SM' }, update: {}, create: { name: 'SM' } });
+  const apiHLP = await prisma.apiStandard.upsert({ where: { name: 'HLP' }, update: {}, create: { name: 'HLP' } });
+
   const products = [
-    { sku: 'PR-U-5W30', name: 'Pravia Ultra 5W-30', brand: 'Pravia', category: 'Passenger Car Motor Oil', viscosityGrade: '5W-30', apiStandard: 'SN/CF', volume: '4L', basePrice: 850000, estimatedCost: 650000 },
-    { sku: 'PR-D-15W40', name: 'Pravia Diesel 15W-40', brand: 'Pravia', category: 'Heavy Duty Diesel', viscosityGrade: '15W-40', apiStandard: 'CI-4', volume: '20L', basePrice: 3200000, estimatedCost: 2600000 },
-    { sku: 'GE-S-10W40', name: 'Gertex Super 10W-40', brand: 'Gertex', category: 'Passenger Car Motor Oil', viscosityGrade: '10W-40', apiStandard: 'SM', volume: '4L', basePrice: 650000, estimatedCost: 500000 },
-    { sku: 'GE-I-68', name: 'Gertex Industrial 68', brand: 'Gertex', category: 'Industrial Oil', viscosityGrade: 'ISO VG 68', apiStandard: 'HLP', volume: '208L', basePrice: 18000000, estimatedCost: 14000000 }
+    { sku: 'PR-U-5W30', name: 'Pravia Ultra 5W-30', brand: 'Pravia', categoryId: catPassenger.id, viscosityGradeId: vis5w30.id, apiStandardId: apiSN.id, volume: '4L', basePrice: 850000, estimatedCost: 650000 },
+    { sku: 'PR-D-15W40', name: 'Pravia Diesel 15W-40', brand: 'Pravia', categoryId: catDiesel.id, viscosityGradeId: vis15w40.id, apiStandardId: apiCI4.id, volume: '20L', basePrice: 3200000, estimatedCost: 2600000 },
+    { sku: 'GE-S-10W40', name: 'Gertex Super 10W-40', brand: 'Gertex', categoryId: catPassenger.id, viscosityGradeId: vis10w40.id, apiStandardId: apiSM.id, volume: '4L', basePrice: 650000, estimatedCost: 500000 },
+    { sku: 'GE-I-68', name: 'Gertex Industrial 68', brand: 'Gertex', categoryId: catIndustrial.id, viscosityGradeId: vis68.id, apiStandardId: apiHLP.id, volume: '208L', basePrice: 18000000, estimatedCost: 14000000 }
   ];
 
   const productsList = [];
@@ -550,6 +565,122 @@ async function main() {
   }
 
   console.log('Notification Templates seeded.');
+
+  // 6. Setup Customer Tier Configurations
+  console.log('Seeding Customer Tier Configurations...');
+  const defaultTiers = [
+    {
+      tier: 'Gold',
+      nameFa: 'طلایی',
+      minPurchaseCount: 20,
+      minTotalAmount: 1000000000,
+      minTotalVolume: 5000,
+      operator: 'OR',
+      color: 'gold',
+      description: 'مشتریان ویژه با حجم و مبلغ خرید بسیار بالا'
+    },
+    {
+      tier: 'Silver',
+      nameFa: 'نقره‌ای',
+      minPurchaseCount: 10,
+      minTotalAmount: 300000000,
+      minTotalVolume: 1500,
+      operator: 'OR',
+      color: 'silver',
+      description: 'مشتریان با سابقه و حجم خرید متوسط به بالا'
+    },
+    {
+      tier: 'Bronze',
+      nameFa: 'برنزی',
+      minPurchaseCount: 2,
+      minTotalAmount: 50000000,
+      minTotalVolume: 300,
+      operator: 'OR',
+      color: 'bronze',
+      description: 'مشتریان با سابقه خرید پایه‌ای یا معمولی'
+    }
+  ];
+
+  for (const t of defaultTiers) {
+    await prisma.customerTierConfig.upsert({
+      where: { tier: t.tier },
+      update: {},
+      create: t
+    });
+  }
+  console.log('Customer Tier Configurations seeded.');
+
+  // 7. Seed Catalog Items (PresentationMethod, CustomerReaction, LostReason)
+  console.log('Seeding Catalogs (PresentationMethod, CustomerReaction, LostReason)...');
+  const presentationMethodsData = [
+    { code: 'InPerson', nameFa: 'حضوری', nameEn: 'In Person', description: 'جلسه و پرزنت حضوری در محل مشتری یا شرکت', sortOrder: 1, isSystem: true },
+    { code: 'PhoneCall', nameFa: 'تماس تلفنی', nameEn: 'Phone Call', description: 'پرزنت و توضیح شفاهی تلفنی', sortOrder: 2, isSystem: true },
+    { code: 'OnlineMeeting', nameFa: 'جلسه آنلاین', nameEn: 'Online Meeting', description: 'جلسه تصویری آنلاین (گوگل میت، اسکایپ و ...)', sortOrder: 3, isSystem: true },
+    { code: 'CatalogSending', nameFa: 'ارسال کاتالوگ / نمونه', nameEn: 'Catalog Sending', description: 'ارسال نمونه فیزیکی یا فایل کاتالوگ', sortOrder: 4, isSystem: true }
+  ];
+  for (const pm of presentationMethodsData) {
+    await prisma.presentationMethod.upsert({
+      where: { code: pm.code },
+      update: {},
+      create: pm
+    });
+  }
+
+  const customerReactionsData = [
+    { code: 'Positive', nameFa: 'مثبت / ابراز علاقه', nameEn: 'Positive', description: 'مشتری استقبال کرد و علاقه نشان داد', sortOrder: 1, isSystem: true },
+    { code: 'Cautious', nameFa: 'احتیاطی / نیاز به بررسی', nameEn: 'Cautious', description: 'مشتری احتیاط دارد و زمان برای تصمیم‌گیری خواست', sortOrder: 2, isSystem: true },
+    { code: 'Negative', nameFa: 'منفی / عدم پذیرش', nameEn: 'Negative', description: 'مشتری تمایل اولیه نشان نداد', sortOrder: 3, isSystem: true }
+  ];
+  for (const cr of customerReactionsData) {
+    await prisma.customerReaction.upsert({
+      where: { code: cr.code },
+      update: {},
+      create: cr
+    });
+  }
+
+  const lostReasonsData = [
+    { code: 'Price', nameFa: 'قیمت بالا', nameEn: 'High Price', description: 'قیمت پیشنهادی بالاتر از انتظار مشتری بود', sortOrder: 1, isSystem: true },
+    { code: 'Quality', nameFa: 'عدم اطمینان به کیفیت', nameEn: 'Quality Concern', description: 'نگرانی از کیفی بودن محصول', sortOrder: 2, isSystem: true },
+    { code: 'Competitor', nameFa: 'ترجیح رقیب', nameEn: 'Competitor Preference', description: 'خرید از برند رقیب', sortOrder: 3, isSystem: true },
+    { code: 'Timing', nameFa: 'زمان‌بندی نامناسب', nameEn: 'Bad Timing', description: 'عدم نیاز فعلی یا بودجه مناسب', sortOrder: 4, isSystem: true },
+    { code: 'Other', nameFa: 'سایر موارد', nameEn: 'Other', description: 'سایر دلایل', sortOrder: 5, isSystem: true }
+  ];
+  for (const lr of lostReasonsData) {
+    await prisma.lostReason.upsert({
+      where: { code: lr.code },
+      update: {},
+      create: lr
+    });
+  }
+
+  // 8. Seed Permission for Customer Tier Management
+  console.log('Seeding Permissions...');
+  const tierPerm = await prisma.permission.upsert({
+    where: { category_action: { category: 'CustomerTiers', action: 'Manage' } },
+    update: {},
+    create: {
+      category: 'CustomerTiers',
+      action: 'Manage',
+      description: 'مدیریت و تدوین فاکتورها و خواص دسته‌بندی مشتریان طلایی، نقره‌ای و برنزی'
+    }
+  });
+
+  // Assign permission to SystemAdmin role if exists
+  if (roles['SystemAdmin']) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: roles['SystemAdmin'].id, permissionId: tierPerm.id } },
+      update: {},
+      create: { roleId: roles['SystemAdmin'].id, permissionId: tierPerm.id }
+    });
+  }
+  if (roles['SalesManager']) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: roles['SalesManager'].id, permissionId: tierPerm.id } },
+      update: {},
+      create: { roleId: roles['SalesManager'].id, permissionId: tierPerm.id }
+    });
+  }
 
   console.log('\n\n🌱  The seed command has been executed.\n');
 }

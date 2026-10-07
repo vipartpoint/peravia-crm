@@ -166,11 +166,67 @@ export class TerritoriesService {
     return archived;
   }
 
-  async hardDeleteAndMerge(id: string, dto: HardDeleteTerritoryDto, userId: string) {
-    // 1. Verify Admin PIN (Golden Key)
-    const adminPinHash = process.env.ADMIN_PIN_HASH || '$2b$10$QGTXM9t9CK1Y2WCOWd7E2ek5ofwoJL70DzgkkKh/LN6GYelYjfecm';
+  async verifyAdminPin(pin: string): Promise<boolean> {
+    if (!pin) return false;
+
+    try {
+      const pinSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'ADMIN_PIN_HASH' }
+      });
+      if (pinSetting && pinSetting.value) {
+        return bcrypt.compare(pin, pinSetting.value);
+      }
+    } catch (e) {
+      // fallback if table is not yet created
+    }
+
     const envPin = process.env.ADMIN_PIN || '123456';
-    const isValidPin = (dto.adminPin === envPin) || (await bcrypt.compare(dto.adminPin, adminPinHash).catch(() => false));
+    if (pin === envPin) return true;
+
+    const adminPinHash = process.env.ADMIN_PIN_HASH || '$2b$10$QGTXM9t9CK1Y2WCOWd7E2ek5ofwoJL70DzgkkKh/LN6GYelYjfecm';
+    return bcrypt.compare(pin, adminPinHash).catch(() => false);
+  }
+
+  async getAdminPinStatus() {
+    try {
+      const pinSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'ADMIN_PIN_HASH' }
+      });
+      return {
+        isCustomized: Boolean(pinSetting && pinSetting.value),
+        updatedAt: pinSetting?.updatedAt || null
+      };
+    } catch (e) {
+      return { isCustomized: false, updatedAt: null };
+    }
+  }
+
+  async updateAdminPin(currentPin: string, newPin: string, userId: string) {
+    if (!newPin || newPin.trim().length < 4) {
+      throw new BadRequestException('رمز کلیدی جدید باید حداقل ۴ رقم یا کاراکتر باشد.');
+    }
+
+    const isCurrentValid = await this.verifyAdminPin(currentPin);
+    if (!isCurrentValid) {
+      throw new BadRequestException('رمز کلیدی فعلی نادرست است.');
+    }
+
+    const hashed = await bcrypt.hash(newPin.trim(), 10);
+
+    await this.prisma.systemSetting.upsert({
+      where: { key: 'ADMIN_PIN_HASH' },
+      update: { value: hashed, updatedBy: userId },
+      create: { key: 'ADMIN_PIN_HASH', value: hashed, updatedBy: userId }
+    });
+
+    await this.logAudit(userId, 'CHANGE_ADMIN_PIN', 'SystemSetting', 'ADMIN_PIN_HASH', null, { changed: true });
+
+    return { message: 'رمز کلیدی ادمین با موفقیت ذخیره شد.' };
+  }
+
+  async hardDeleteAndMerge(id: string, dto: HardDeleteTerritoryDto, userId: string) {
+    // 1. Verify Admin PIN (Dynamic or Env)
+    const isValidPin = await this.verifyAdminPin(dto.adminPin);
     if (!isValidPin) {
       throw new BadRequestException('رمز کلیدی نامعتبر است (Invalid Admin PIN)');
     }

@@ -6,14 +6,16 @@ import { TableSkeleton } from '@/components/ui/Skeleton';
 import { DataTable } from '@/components/ui/DataTable';
 import { useGlobalEntity } from '@/contexts/GlobalEntityContext';
 import { Button } from '@/components/ui/Button';
-import { Plus } from 'lucide-react';
+import { Plus, Key } from 'lucide-react';
 import { Dictionary } from '@/utils/constants/dictionary';
 import { HardDeleteTerritoryModal } from '@/components/forms/HardDeleteTerritoryModal';
+import { ChangeAdminPinModal } from '@/components/modals/ChangeAdminPinModal';
 
 export default function TerritoriesPage() {
   const [territories, setTerritories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [hardDeleteTarget, setHardDeleteTarget] = useState<any | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const { openCreate } = useGlobalEntity();
@@ -62,9 +64,20 @@ export default function TerritoriesPage() {
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">{Dictionary.menu.territories}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">مدیریت مناطق فروش و سلسله مراتب آن‌ها</p>
         </div>
-        <Button variant="primary" onClick={() => openCreate('territory')} className="shadow-lg shadow-primary/20">
-          <Plus className="w-5 h-5 ml-2" /> افزودن منطقه
-        </Button>
+        <div className="flex items-center gap-3">
+          {userRole === 'SystemAdmin' && (
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPinModal(true)} 
+              className="text-xs flex items-center gap-2 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-300 font-bold"
+            >
+              <Key className="w-4 h-4 text-amber-500" /> تغییر رمز کلیدی ادمین
+            </Button>
+          )}
+          <Button variant="primary" onClick={() => openCreate('territory')} className="shadow-lg shadow-primary/20">
+            <Plus className="w-5 h-5 ml-2" /> افزودن منطقه
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -95,6 +108,11 @@ export default function TerritoriesPage() {
           }}
         />
       )}
+
+      <ChangeAdminPinModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+      />
     </div>
   );
 }

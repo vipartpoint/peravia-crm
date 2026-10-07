@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Shield, ShieldAlert, ShieldCheck, KeyRound, Copy, CheckCircle, MonitorSmartphone } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, KeyRound, Copy, CheckCircle, MonitorSmartphone, Key } from 'lucide-react';
 import { api } from '@/services/api';
 import Image from 'next/image';
+import { ChangeAdminPinModal } from '@/components/modals/ChangeAdminPinModal';
 
 export default function SecuritySettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showAdminPinModal, setShowAdminPinModal] = useState(false);
   
   // Setup State
   const [isSettingUp, setIsSettingUp] = useState(false);
@@ -83,7 +85,7 @@ export default function SecuritySettingsPage() {
 
   if (loading) return <div className="p-8 text-center text-gray-500 animate-pulse">در حال بارگذاری...</div>;
 
-  const isMandatory = ['SystemAdmin', 'Finance', 'WarehouseManager', 'FactoryManager'].includes(user?.role?.name || '');
+  const isMandatory = ['SystemAdmin', 'CompanyAdmin', 'Finance', 'WarehouseManager', 'FactoryManager'].includes(user?.role?.name || '');
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-12">
@@ -257,6 +259,41 @@ export default function SecuritySettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Admin PIN Card for SystemAdmin */}
+      {user?.role?.name === 'SystemAdmin' && (
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-100">
+            <CardTitle className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <Key className="w-5 h-5 text-amber-500" />
+              رمز کلیدی دوم سیستم (Admin PIN / Golden Key)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1.5 max-w-xl">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  این رمز کلیدی جهت تایید نهایی عملیات‌های تخریبی و حساس (مانند حذف فیزیکی و ادغام مناطق فروش) استفاده می‌شود.
+                </p>
+                <p className="text-xs text-amber-600 font-medium">
+                  به عنوان سوپر ادمین، می‌توانید هر زمان که مایل بودید این رمز را تغییر دهید.
+                </p>
+              </div>
+              <Button 
+                onClick={() => setShowAdminPinModal(true)}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 shadow-sm"
+              >
+                تغییر رمز کلیدی
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <ChangeAdminPinModal 
+        isOpen={showAdminPinModal}
+        onClose={() => setShowAdminPinModal(false)}
+      />
     </div>
   );
 }

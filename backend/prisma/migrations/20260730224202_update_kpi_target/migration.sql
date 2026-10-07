@@ -1,0 +1,20 @@
+-- DropForeignKey
+ALTER TABLE "KPITarget" DROP CONSTRAINT "KPITarget_userId_fkey";
+
+-- AlterTable
+ALTER TABLE "KPITarget" ADD COLUMN     "assignmentType" TEXT NOT NULL DEFAULT 'INDIVIDUAL',
+ADD COLUMN     "deletedAt" TIMESTAMP(3),
+ADD COLUMN     "deletedById" TEXT,
+ADD COLUMN     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+ADD COLUMN     "totalWeightedScore" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "updatedById" TEXT,
+ADD COLUMN     "weightCollectedAmount" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "weightLeadConversions" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "weightNewCustomers" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "weightOrdersCount" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "weightSalesAmount" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "weightVisitsCount" DECIMAL(65,30) NOT NULL DEFAULT 0.0,
+ALTER COLUMN "userId" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "KPITarget" ADD CONSTRAINT "KPITarget_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

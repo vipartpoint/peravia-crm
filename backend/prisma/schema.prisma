@@ -72,6 +72,14 @@ model User {
   opportunitiesCreated    Opportunity[]             @relation("OpportunityCreator")
   OpportunityStageHistory OpportunityStageHistory[]
   activities              Activity[]
+
+  ticketsAssigned         Ticket[]
+  workflowLogs            WorkflowExecutionLog[]
+  managedAccounts         Account[]              @relation("AccountManager")
+  issuedStockCertificates StockCertificate[]     @relation("IssuedStockCertificates")
+
+  contentCalendarItemsCreated ContentCalendarItem[] @relation("ContentItemCreator")
+  mediaCategoriesCreated      MediaCategory[]       @relation("MediaCategoryCreator")
 }
 
 model Role {
@@ -88,7 +96,7 @@ model Territory {
   type      String // Province, City, SalesRegion, VisitRoute
   isActive  Boolean @default(true)
   parentId  String?
-  managerId String?
+  managerId String
 
   createdBy    String
   createdAt    DateTime  @default(now())
@@ -99,7 +107,7 @@ model Territory {
 
   parent        Territory?    @relation("TerritoryHierarchy", fields: [parentId], references: [id])
   children      Territory[]   @relation("TerritoryHierarchy")
-  manager       User?         @relation("ManagerToTerritory", fields: [managerId], references: [id])
+  manager       User          @relation("ManagerToTerritory", fields: [managerId], references: [id])
   creator       User          @relation("TerritoryCreator", fields: [createdBy], references: [id])
   users         User[]        @relation("UserToTerritory")
   customers     Customer[]
@@ -135,6 +143,8 @@ model Customer {
   territory Territory? @relation(fields: [territoryId], references: [id])
   creator   User       @relation("CustomerCreator", fields: [createdBy], references: [id])
   assignee  User?      @relation("CustomerAssignee", fields: [assignedUserId], references: [id])
+  accountId String?
+  account   Account?   @relation(fields: [accountId], references: [id])
 
   contacts      Contact[]
   orders        Order[]
@@ -143,6 +153,10 @@ model Customer {
   presentations Presentation[]
   payments      Payment[]
   opportunities Opportunity[]
+
+  loyaltyAccount LoyaltyAccount?
+  tickets        Ticket[]
+  productSerials ProductSerial[]
 
   @@index([status])
   @@index([territoryId])
@@ -233,18 +247,22 @@ model SalesFunnelStage {
 }
 
 model Lead {
-  id             String    @id @default(uuid())
-  name           String
-  phone          String // Encrypted
-  source         String // Chatbot, Referral, Exhibition, etc.
-  brandInterest  String // Pravia, Gertex, Both
-  territoryId    String?
-  assignedTo     String?
-  status         String    @default("New") // New, Contacted, Qualified, Lost, Converted
-  currentStageId String?
-  lostReason     String?
-  customerId     String?   @unique
-  nextFollowUpAt DateTime?
+  id              String    @id @default(uuid())
+  name            String
+  phone           String // Encrypted
+  phone2          String? // Optional second phone
+  phone3          String? // Optional third phone
+  contactName     String? // Optional contact person name
+  contactPosition String? // Optional contact person position
+  source          String // Chatbot, Referral, Exhibition, etc.
+  brandInterest   String // Pravia, Gertex, Both
+  territoryId     String?
+  assignedTo      String?
+  status          String    @default("New") // New, Contacted, Qualified, Lost, Converted
+  currentStageId  String?
+  lostReason      String?
+  customerId      String?   @unique
+  nextFollowUpAt  DateTime?
 
   createdBy    String
   createdAt    DateTime  @default(now())
@@ -256,6 +274,8 @@ model Lead {
   stage        SalesFunnelStage? @relation(fields: [currentStageId], references: [id])
   territory    Territory?        @relation(fields: [territoryId], references: [id])
   assignedUser User?             @relation("LeadAssignee", fields: [assignedTo], references: [id])
+  accountId    String?
+  account      Account?          @relation(fields: [accountId], references: [id])
   creator      User              @relation("LeadCreator", fields: [createdBy], references: [id])
 
   stageHistory  LeadStageHistory[]
@@ -356,26 +376,36 @@ model Payment {
   deletedBy       String?
   deleteReason    String?
 
-  customer    Customer     @relation(fields: [customerId], references: [id])
-  order       Order?       @relation(fields: [orderId], references: [id])
-  opportunity Opportunity? @relation(fields: [opportunityId], references: [id])
+  customer      Customer     @relation(fields: [customerId], references: [id])
+  order         Order?       @relation(fields: [orderId], references: [id])
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
   opportunityId String?
-  cheque      Cheque?      @relation(fields: [chequeId], references: [id])
+  cheque        Cheque?      @relation(fields: [chequeId], references: [id])
 }
 
 model KPITarget {
-  id                    String   @id @default(uuid())
-  userId                String
-  territoryId           String?
-  periodType            String // Monthly, Quarterly, Yearly
-  periodStart           DateTime
-  periodEnd             DateTime
-  targetSalesAmount     Decimal  @default(0.0)
-  targetCollectedAmount Decimal  @default(0.0)
-  targetOrdersCount     Int      @default(0)
-  targetVisitsCount     Int      @default(0)
-  targetNewCustomers    Int      @default(0)
-  targetLeadConversions Int      @default(0)
+  id             String   @id @default(uuid())
+  assignmentType String   @default("INDIVIDUAL") // INDIVIDUAL, TERRITORY
+  status         String   @default("ACTIVE") // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  userId         String?
+  territoryId    String?
+  periodType     String // Monthly, Quarterly, Yearly, Custom
+  periodStart    DateTime
+  periodEnd      DateTime
+
+  targetSalesAmount     Decimal @default(0.0)
+  targetCollectedAmount Decimal @default(0.0)
+  targetOrdersCount     Int     @default(0)
+  targetVisitsCount     Int     @default(0)
+  targetNewCustomers    Int     @default(0)
+  targetLeadConversions Int     @default(0)
+
+  weightSalesAmount     Decimal @default(0.0)
+  weightCollectedAmount Decimal @default(0.0)
+  weightOrdersCount     Decimal @default(0.0)
+  weightVisitsCount     Decimal @default(0.0)
+  weightNewCustomers    Decimal @default(0.0)
+  weightLeadConversions Decimal @default(0.0)
 
   actualSalesAmount     Decimal @default(0.0)
   actualCollectedAmount Decimal @default(0.0)
@@ -388,12 +418,16 @@ model KPITarget {
   collectionAchievementPercent Decimal @default(0.0)
   visitAchievementPercent      Decimal @default(0.0)
   conversionAchievementPercent Decimal @default(0.0)
+  totalWeightedScore           Decimal @default(0.0)
 
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdBy   String
+  updatedById String?
+  deletedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
-  user      User       @relation(fields: [userId], references: [id])
+  user      User?      @relation(fields: [userId], references: [id])
   territory Territory? @relation(fields: [territoryId], references: [id])
 }
 
@@ -485,12 +519,12 @@ model ApprovalRequest {
   updatedAt        DateTime @updatedAt
 
   // Unified Approval Center Extension
-  title            String?
-  priority         String    @default("Medium") // Low, Medium, High, Critical
-  metadata         Json?
-  approvedAt       DateTime?
-  rejectedAt       DateTime?
-  dueAt            DateTime?
+  title      String?
+  priority   String    @default("Medium") // Low, Medium, High, Critical
+  metadata   Json?
+  approvedAt DateTime?
+  rejectedAt DateTime?
+  dueAt      DateTime?
 
   requester User              @relation("Requester", fields: [requestedBy], references: [id])
   approver  User?             @relation("Approver", fields: [assignedApprover], references: [id])
@@ -596,26 +630,29 @@ model StockMovement {
 }
 
 model Visit {
-  id             String    @id @default(uuid())
-  customerId     String?
-  leadId         String?
-  userId         String
-  territoryId    String?
-  visitType      String    @default("Planned") // Planned, Urgent, FollowUp, ProductIntro
-  status         String    @default("Planned") // Planned, Completed, Cancelled, NoShow, NeedsFollowUp
-  scheduledAt    DateTime
-  completedAt    DateTime?
-  gpsLat         Float?
-  gpsLong        Float?
-  photoUrl       String?
-  result         String?
-  nextFollowUpAt DateTime?
-  notes          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedAt      DateTime?
-  deletedBy      String?
-  deleteReason   String?
+  id                    String    @id @default(uuid())
+  customerId            String?
+  leadId                String?
+  userId                String
+  territoryId           String?
+  visitType             String    @default("Planned") // Planned, Urgent, FollowUp, ProductIntro, PhoneCall
+  status                String    @default("Planned") // Planned, Completed, Cancelled, NoShow, NeedsFollowUp
+  contactPersonName     String?
+  contactPersonPosition String?
+  contactPhone          String?
+  scheduledAt           DateTime
+  completedAt           DateTime?
+  gpsLat                Float?
+  gpsLong               Float?
+  photoUrl              String?
+  result                String?
+  nextFollowUpAt        DateTime?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+  deletedBy             String?
+  deleteReason          String?
 
   customer  Customer?  @relation(fields: [customerId], references: [id])
   lead      Lead?      @relation(fields: [leadId], references: [id])
@@ -696,15 +733,19 @@ model Product {
   sku                   String  @unique
   name                  String
   brand                 String
-  category              String?
+  categoryId            String?
   inventoryCategory     String? // FinishedGoods, RawMaterials, Containers, Labels, Cartons, ConsumableParts, Tools
-  viscosityGrade        String?
-  apiStandard           String?
+  viscosityGradeId      String?
+  apiStandardId         String?
   volume                String?
   basePrice             Decimal @default(0.0)
   estimatedCost         Decimal @default(0.0)
   estimatedProfitMargin Decimal @default(0.0)
   isActive              Boolean @default(true)
+
+  category       ProductCategory? @relation(fields: [categoryId], references: [id])
+  viscosityGrade ViscosityGrade?  @relation(fields: [viscosityGradeId], references: [id])
+  apiStandard    ApiStandard?     @relation(fields: [apiStandardId], references: [id])
 
   createdBy    String
   createdAt    DateTime  @default(now())
@@ -724,6 +765,8 @@ model Product {
   shortageRequests InventoryShortageRequest[]
   stockTransfers   StockTransferRequest[]
   opportunityItems OpportunityItem[]
+
+  productSerials ProductSerial[]
 }
 
 model PriceList {
@@ -759,10 +802,10 @@ model Notification {
   userId      String
   title       String
   message     String
-  type        String    // Alert, Reminder, Escalation, System, Security
-  priority    String    // Low, Medium, High, Critical
+  type        String // Alert, Reminder, Escalation, System, Security
+  priority    String // Low, Medium, High, Critical
   status      String    @default("Unread") // Unread, Read, Archived
-  entityType  String?   // Task, Visit, Order, Cheque, Inventory, Customer
+  entityType  String? // Task, Visit, Order, Cheque, Inventory, Customer
   entityId    String?
   actionUrl   String?
   metadata    Json?
@@ -884,9 +927,10 @@ model ProductionBatch {
   wasteQuantity       Int?     @default(0)
   createdAt           DateTime @default(now())
 
-  product   Product          @relation(fields: [productId], references: [id])
-  stocks    InventoryStock[]
-  movements StockMovement[]
+  product        Product          @relation(fields: [productId], references: [id])
+  stocks         InventoryStock[]
+  movements      StockMovement[]
+  productSerials ProductSerial[]
 }
 
 model InventoryReservation {
@@ -983,18 +1027,18 @@ model Opportunity {
   competitorName       String?
   competitorNotes      String?   @db.Text
   lostAt               DateTime?
-  
+
   // New Normalized Catalog References
-  lostReasonId         String?
-  lostReasonNote       String?
-  lostById             String?
-  reopenReasonId       String?
-  reopenReasonNote     String?
-  reopenedById         String?
-  reopenedAt           DateTime?
-  nextAction           String?
-  followUpDate         DateTime?
-  reminderStatus       String    @default("Pending") // Pending, Sent, Dismissed
+  lostReasonId     String?
+  lostReasonNote   String?
+  lostById         String?
+  reopenReasonId   String?
+  reopenReasonNote String?
+  reopenedById     String?
+  reopenedAt       DateTime?
+  nextAction       String?
+  followUpDate     DateTime?
+  reminderStatus   String    @default("Pending") // Pending, Sent, Dismissed
 
   createdBy String
   createdAt DateTime  @default(now())
@@ -1012,9 +1056,9 @@ model Opportunity {
   stageHistory OpportunityStageHistory[]
   orders       Order[]
   payments     Payment[]
-  
-  lostReasonEntity   LostReason?   @relation(fields: [lostReasonId], references: [id])
-  reopenReasonEntity ReopenReason? @relation(fields: [reopenReasonId], references: [id])
+
+  lostReasonEntity   LostReason?             @relation(fields: [lostReasonId], references: [id])
+  reopenReasonEntity ReopenReason?           @relation(fields: [reopenReasonId], references: [id])
   competitors        OpportunityCompetitor[]
 }
 
@@ -1085,13 +1129,13 @@ model ReopenReason {
 }
 
 model Competitor {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  website     String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  website   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   opportunities OpportunityCompetitor[]
 }
@@ -1112,9 +1156,9 @@ model OpportunityCompetitor {
 
 model Activity {
   id            String   @id @default(uuid())
-  entityType    String   // Lead, Customer, Opportunity, Order, Visit, Meeting
+  entityType    String // Lead, Customer, Opportunity, Order, Visit, Meeting
   entityId      String
-  activityType  String   // Created, Updated, NoteAdded, StatusChanged, StageChanged, FollowUpCreated, FollowUpCompleted, MeetingScheduled, MeetingCompleted, VisitScheduled, VisitCompleted, OpportunityWon, OpportunityLost, OrderCreated, OrderApproved, OrderCancelled, Custom
+  activityType  String // Created, Updated, NoteAdded, StatusChanged, StageChanged, FollowUpCreated, FollowUpCompleted, MeetingScheduled, MeetingCompleted, VisitScheduled, VisitCompleted, OpportunityWon, OpportunityLost, OrderCreated, OrderApproved, OrderCancelled, Custom
   title         String
   description   String?  @db.Text
   metadata      Json?
@@ -1124,7 +1168,7 @@ model Activity {
   createdBy     String
   createdAt     DateTime @default(now())
 
-  user          User     @relation(fields: [createdBy], references: [id])
+  user User @relation(fields: [createdBy], references: [id])
 
   @@index([entityType, entityId])
   @@index([createdAt])
@@ -1155,3 +1199,321 @@ model CustomerReaction {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ----------------------------------------------------
+// CRM PHASE 2: Enterprise Architecture Additions
+// ----------------------------------------------------
+
+// 1. QR Engine & Anti-Fraud
+
+model ProductSerial {
+  id                  String    @id @default(uuid())
+  productId           String
+  batchId             String?
+  serialNumber        String    @unique
+  secureHash          String    @unique
+  productionDate      DateTime?
+  expirationDate      DateTime?
+  lifecycleStatus     String    @default("Generated") // Generated, Printed, Packaged, Warehouse, Shipped, Sold, Activated, Scanned, Blocked, Expired, Recalled
+  firstScanDate       DateTime?
+  lastScanDate        DateTime?
+  scanCount           Int       @default(0)
+  activatedDate       DateTime?
+  activatedCustomerId String?
+  isBlocked           Boolean   @default(false)
+  blockReason         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  deletedBy           String?
+
+  product  Product          @relation(fields: [productId], references: [id])
+  batch    ProductionBatch? @relation(fields: [batchId], references: [id])
+  customer Customer?        @relation(fields: [activatedCustomerId], references: [id])
+  scans    ScanActivity[]
+}
+
+model ScanActivity {
+  id                String   @id @default(uuid())
+  serialId          String
+  ipAddress         String?
+  deviceFingerprint String?
+  userAgent         String?
+  country           String?
+  city              String?
+  gpsLat            Float?
+  gpsLng            Float?
+  scanTimestamp     DateTime @default(now())
+  isSuspicious      Boolean  @default(false)
+  fraudFlags        Json?    @default("[]") // e.g. ["IMPOSSIBLE_TRAVEL", "MASS_SCANNING"]
+
+  serial ProductSerial @relation(fields: [serialId], references: [id], onDelete: Cascade)
+}
+
+// 2. Loyalty Engine
+
+model LoyaltyAccount {
+  id              String   @id @default(uuid())
+  customerId      String   @unique
+  tier            String   @default("Bronze") // Bronze, Silver, Gold, Platinum
+  totalPoints     Decimal  @default(0.0) @db.Decimal(15, 2)
+  redeemedPoints  Decimal  @default(0.0) @db.Decimal(15, 2)
+  availablePoints Decimal  @default(0.0) @db.Decimal(15, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  ledgers  LoyaltyLedger[]
+}
+
+model LoyaltyLedger {
+  id              String   @id @default(uuid())
+  accountId       String
+  transactionType String // Earn, Redeem, Expire, Adjustment
+  points          Decimal  @db.Decimal(15, 2)
+  referenceType   String? // Scan, Purchase, Referral
+  referenceId     String?
+  description     String?
+  createdAt       DateTime @default(now())
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model LoyaltyRule {
+  id            String   @id @default(uuid())
+  name          String
+  eventName     String // FIRST_SCAN, PURCHASE, BIRTHDAY
+  conditions    Json?    @default("{}")
+  pointsToAward Decimal  @db.Decimal(15, 2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CustomerTierConfig {
+  id               String   @id @default(uuid())
+  tier             String   @unique // 'Gold', 'Silver', 'Bronze'
+  nameFa           String   // 'طلایی', 'نقره‌ای', 'برنزی'
+  minPurchaseCount Int      @default(0)
+  minTotalAmount   Decimal  @default(0) @db.Decimal(20, 2)
+  minTotalVolume   Decimal  @default(0) @db.Decimal(20, 2)
+  operator         String   @default("OR") // 'AND' or 'OR'
+  color            String   @default("gold")
+  description      String?
+  updatedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model RewardCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  rewards     Reward[]
+}
+
+model Reward {
+  id             String   @id @default(uuid())
+  categoryId     String
+  name           String
+  description    String?
+  pointsRequired Decimal  @db.Decimal(15, 2)
+  isActive       Boolean  @default(true)
+  stockCount     Int? // If physical reward
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category RewardCategory @relation(fields: [categoryId], references: [id])
+}
+
+// 3. Ticketing System
+
+model Ticket {
+  id                String    @id @default(uuid())
+  ticketNumber      String    @unique
+  customerId        String
+  category          String // Warranty, Complaint, Finance, Technical
+  priority          String    @default("Normal") // Low, Normal, High, Urgent
+  status            String    @default("Open") // Open, InProgress, WaitingOnCustomer, Resolved, Closed
+  assignedUserId    String?
+  slaDueDate        DateTime?
+  resolutionDetails String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+  deletedBy         String?
+
+  customer Customer        @relation(fields: [customerId], references: [id])
+  assignee User?           @relation(fields: [assignedUserId], references: [id])
+  messages TicketMessage[]
+}
+
+model TicketMessage {
+  id             String   @id @default(uuid())
+  ticketId       String
+  senderId       String? // Null if sent by customer via Portal
+  message        String   @db.Text
+  isInternalNote Boolean  @default(false)
+  attachments    Json?    @default("[]")
+  createdAt      DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+// 4. Workflow Automation Engine
+
+model WorkflowRule {
+  id            String   @id @default(uuid())
+  name          String
+  triggerEvent  String // e.g. Customer.Created, Serial.SuspiciousScan
+  conditions    Json?    @default("{}") // AST logic
+  actionType    String // SMS, Email, Webhook, AssignUser, CreateTask
+  actionPayload Json
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model WorkflowExecutionLog {
+  id             String   @id @default(uuid())
+  ruleId         String
+  triggeredById  String?
+  triggerEvent   String
+  targetEntityId String?
+  status         String // Success, Failed
+  errorMessage   String?  @db.Text
+  executedAt     DateTime @default(now())
+
+  user User? @relation(fields: [triggeredById], references: [id])
+}
+
+model Account {
+  id          String  @id @default(uuid())
+  name        String  @unique // e.g. "فولاد", "سیمان"
+  managerId   String?
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  manager   User?      @relation("AccountManager", fields: [managerId], references: [id])
+  customers Customer[]
+  leads     Lead[]
+}
+
+model ProductTaxonomy {
+  id        String   @id @default(uuid())
+  type      String // 'Category', 'Viscosity', 'ApiStandard', 'Volume'
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([type, name])
+}
+
+model StockCertificate {
+  id           String   @id @default(uuid())
+  serialNumber String   @unique
+  issueDate    DateTime @default(now())
+
+  shareholderName String
+  fatherName      String
+  nationalId      String
+
+  sharesCount   Int
+  shareValue    Decimal @db.Decimal(20, 4)
+  totalAmount   Decimal @db.Decimal(20, 4)
+  amountInWords String
+
+  shareRangeFrom Int
+  shareRangeTo   Int
+
+  registrationNumber   String
+  registrationDate     String
+  registrationLocation String
+  registeredCapital    String
+
+  issuedByUserId String
+  issuedBy       User   @relation("IssuedStockCertificates", fields: [issuedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCategory {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model ViscosityGrade {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model ApiStandard {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+enum ContentCalendarStatus {
+  TODO
+  DONE
+  REJECTED
+}
+
+model ContentCalendarItem {
+  id              String                @id @default(uuid())
+  title           String
+  description     String?
+  publishDate     DateTime
+  publishTime     String?
+  status          ContentCalendarStatus @default(TODO)
+  mediaCategoryId String
+  mediaCategory   MediaCategory         @relation(fields: [mediaCategoryId], references: [id])
+  createdBy       String
+  creator         User                  @relation("ContentItemCreator", fields: [createdBy], references: [id])
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  deletedAt       DateTime?
+  deletedBy       String?
+  deleteReason    String?
+
+  @@index([publishDate])
+  @@index([mediaCategoryId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model MediaCategory {
+  id           String                @id @default(uuid())
+  name         String                @unique
+  isActive     Boolean               @default(true)
+  createdBy    String
+  creator      User                  @relation("MediaCategoryCreator", fields: [createdBy], references: [id])
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  contentItems ContentCalendarItem[]
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
